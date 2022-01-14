@@ -1,0 +1,658 @@
+*New do-file for cleaning the nlsy dataset
+
+/*
+	Project: The growing importance of social skills in the labor market (2017)
+	Author: David Deming
+	Date Created: April 2017
+	
+	Description: Cleans NLSY79 and NLSY97 data, runs the analysis and creates:
+		Tables 1, 2, 3, 4, 5, A2, A3, A4
+	
+	Notes:
+	- The replication package includes NLSY79 and NLSY97 tagsets (files with the
+		suffixes ".NLSY79" and ".NLSY97") that can be used to download the data from
+		the NLSY Investigator tool
+	- In the do-file that is automatically created as part of the NLSY79 extract,
+		uncomment the "Crosswalk for Reference number & Question name" section
+		that renames the variables, and remove "#" characters from variable names
+	- In the do-file that is automatically created as part of the NLSY97 extract,
+		uncomment the "Crosswalk for Reference number & Question name" section
+		that renames the variables, and replace "!" characters in variable names
+		with "_"
+*/
+
+
+version 14
+clear all
+set more off
+
+
+**** Define macros ****
+
+global topdir "C:\Users\David\Desktop\CEU\Courses_year2\Empirical_Research_Methods\Deming_2017_SocialSkills_Replication\Deming_2017_SocialSkills_Replication"
+local dodir "${topdir}/Do"
+
+local rawdir "${topdir}/Data/census-acs/raw"
+local cleandir "${topdir}/Data/census-acs/clean"
+local collapdir "${topdir}/Data/census-acs/collapsed" 
+local occdir "${topdir}/Data/census-acs/xwalk_occ"
+local inddir "${topdir}/Data/census-acs/xwalk_ind"
+
+local onetdir "${topdir}/Data/onet"
+local txtdir "${topdir}/Data/onet/text_files"
+local dotdir "${topdir}/Data/dot"
+
+local nlsydir "${topdir}/Data/nlsy"
+local import79dir "${topdir}/Data/nlsy/import/nlsy79"
+local import97dir "${topdir}/Data/nlsy/import/nlsy97"
+local name79 "socskills_nlsy79_final"			/* Name of NLSY79 extract */
+local name97 "socskills_nlsy97_final"			/* Name of NLSY97 extract */
+local afqtadj "${topdir}/Data/nlsy/altonjietal2012"
+
+local figdir "${topdir}/Results/figures"
+local tabdir "${topdir}/Results/tables"
+
+
+**************************
+****Non-NLSY Data Prep****
+**************************
+
+** Crosswalk for ind 2000 to ind6090
+
+use "`cleandir'/2000.dta", clear
+keep ind ind6090
+duplicates drop
+rename ind ind00
+save "`inddir'/ind00.dta", replace
+
+** Crosswalk between Occ70 and Occ1990dd
+
+* To merge in ONET tasks at occ1990dd level to NLSY data in 1979-1981,
+*	which uses occ70 codes, need this crosswalk
+
+use "`occdir'/occ70-80cw.dta", clear
+rename occ80 occ
+merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", keep(match) nogenerate
+drop occ
+save "`occdir'/occ1970_occ1990dd.dta", replace
+
+** Weight ONET 1998 by 1980 Census
+
+* Use 1980 Census data
+use "`cleandir'/1980.dta", clear
+
+* Drop occupations with no ONET data
+drop if onetmerge==1
+
+* Collapse ONET variables by occ1990dd
+collapse (rawsummarize) lswt (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
+
+* Turn ONET variables into percentiles weighted by 1980 labor supply
+foreach var of varlist require_social_onet1998-interact_onet1998 {
+	xtile `var'_pct=`var' [aw=lswt], nq(100)
+	replace `var'_pct=`var'_pct/10
+	drop `var'
+}	
+
+* Save data
+save "`onetdir'/onet98_occ1990dd_pct.dta", replace
+
+
+*************************
+****Clean NLSY79 Data****
+*************************
+
+** Import data and define value labels
+import delimited "`import79dir'/`name79'.csv", case(preserve) clear 
+do "`import79dir'/`name79'-value-labels.do"
+tolower
+
+** Code variables as missing if values are less than zero
+foreach var of varlist _all {
+	replace `var'=. if `var'<0
+}
+
+** Individual ID codes
+rename caseid_1979 caseid
+
+** Demographics
+generate race=sample_race_78scrn
+generate sex=sample_sex_1979
+generate age1979=fam_1b_1979
+
+* Age by year
+forvalues y=1980(1)1994 {
+	local z=`y'-1979
+	generate age`y'=age1979+`z'
+}
+forvalues y=1996(2)2012 {
+	local z=`y'-1979
+	generate age`y'=age1979+`z'
+}
+
+** Urbanicity and regression
+forvalues y=1979(1)1994 {
+	generate urban`y'=urban_rural_`y'
+	generate div`y'=regression_`y'
+	generate metro`y'=smsares_`y'
+}
+forvalues y=1996(2)2012 {
+	generate urban`y'=urban_rural_`y'
+	generate div`y'=regression_`y'
+	generate metro`y'=smsares_`y'
+}
+
+** Highest grade completed
+egenerate educ=rowmax(hgcrev*)
+
+** Employment since date of last interview (DLI)
+forvalues y=1979(1)1994 {
+	rename lastint_jobs_`y'_xrnd emp`y'
+	recode emp`y' (0=0) (1/20=1)
+}
+forvalues y=1996(2)2012 {
+	rename lastint_jobs_`y'_xrnd emp`y'
+	recode emp`y' (0=0) (1/20=1)
+}
+
+** Hourly rate of pay
+forvalues y=1979(1)1994 {
+	generate wage`y'=cpshrp_`y'/100
+}
+forvalues y=1996(2)2012 {
+	generate wage`y'=hrp1_`y'/100
+}
+
+* Hourly wage excluding those enrolled in school
+forvalues y=79(1)94 {
+		generate wage_noschl19`y'= wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
+}
+forvalues y=96(2)98 {
+	generate wage_noschl19`y'=wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
+}
+forvalues y=0(2)6 {
+	generate wage_noschl200`y'=wage200`y' if enrollmtrev0`y'_200`y'!=2 & enrollmtrev0`y'_200`y'!=3
+}
+
+** Occupation: Apply occ1990dd crosswalk
+
+* Remove extra digit for occ codes beginning in 2004
+forvalues y=2004(2)2012 {
+	rename occall_emp_01_`y' occall_4d
+	generate occall_emp_01_`y'=substr(string(occall_4d), 1, length(string(occall_4d))-1)
+	destring occall_emp_01_`y', replace
+	drop occall_4d
+}
+
+* Years 1979-1981: occ70
+forvalues y=1979(1)1981 {
+	rename cpsocc70_`y' occ70
+	merge m:1 occ70 using "`occdir'/occ1970_occ1990dd.dta", keep(master match) nogenerate
+	display "Occupations not matched to occ1990dd: `y'"
+	levelsof occ70 if occ1990dd==.
+	rename occ70 occ`y'
+	rename occ1990dd occ1990dd`y'
+}
+
+* Years 1982-2000: occ80
+forvalues y=1982(1)1994 {
+	rename cpsocc80_`y' occ
+	merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", ///
+		keep(master match) nogenerate
+	display "Occupations not matched to occ1990dd: `y'"
+	levelsof occ if occ1990dd==.
+	rename occ occ`y'
+	rename occ1990dd occ1990dd`y'
+}
+rename cpsocc80_01_2000 cpsocc80_2000
+forvalues y=1996(2)2000 {
+	rename cpsocc80_`y' occ
+	merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", ///
+		keep(master match) nogenerate
+	display "Occupations not matched to occ1990dd: `y'"
+	levelsof occ if occ1990dd==.
+	rename occ occ`y'
+	rename occ1990dd occ1990dd`y'	
+}
+
+* Years 2002-2012: occ2000
+forvalues y=2002(2)2012 {
+	rename occall_emp_01_`y' occ
+	merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", ///
+		keep(master match) nogenerate
+	display "Occupations not matched to occ1990dd: `y'"
+	levelsof occ if occ1990dd==.
+	rename occ occ`y'
+	rename occ1990dd occ1990dd`y'	
+}
+
+** Industry: Apply ind6090 crosswalk
+
+* Years 1979-1981: ind70
+forvalues y=1979(1)1981 {
+	rename cpsind70_`y' ind70
+	merge m:1 ind70 using "`inddir'/ind70.dta", keep(master match) nogenerate ///
+		keepusing(ind70 ind6090)
+	display "Industries not matched to ind6090: `y'"
+	levelsof ind70 if ind6090==.
+	rename ind70 ind`y'
+	rename ind6090 ind6090`y'
+}
+
+* Years 1982-2000: ind80
+forvalues y=1982(1)1994 {
+	rename cpsind80_`y' ind80
+	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogenerate ///
+		keepusing(ind80 ind6090)
+	display "Industries not matched to ind6090: `y'"
+	levelsof ind80 if ind6090==.
+	rename ind80 ind`y'
+	rename ind6090 ind6090`y'
+}
+rename cpsind80_01_2000 cpsind80_2000
+forvalues y=1996(2)2000 {
+	rename cpsind80_`y' ind80
+	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogenerate ///
+		keepusing(ind80 ind6090)
+	display "Industries not matched to ind6090: `y'"
+	levelsof ind80 if ind6090==.
+	rename ind80 ind`y'
+	rename ind6090 ind6090`y'
+}
+
+* Years 2002-2012: ind00
+forvalues y=2002(2)2012 {
+	rename indall_emp_01_`y' ind00
+	if `y'==2004 | `y'==2006 | `y'==2008 | `y'==2010 | `y'==2012 {
+		replace ind00=floor(ind00/10)
+	}
+	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
+	display "Industries not matched to ind6090: `y'"
+	levelsof ind00 if ind6090==.
+	rename ind00 ind`y'
+	rename ind6090 ind6090`y'
+}
+
+** Social skills composite
+
+* School activity participation
+generate youth_org=school_46_000001_1984
+generate hobby=school_46_000002_1984
+generate stugov=school_46_000003_1984
+generate newsp=school_46_000004_1984
+generate athletics=school_46_000005_1984
+generate perfarts=school_46_000006_1984
+
+* Sociability
+generate social_age6=health_soc_1_1985
+generate social_adult=health_soc_2_1985
+
+* Number of clubs, including zero
+foreach x in youth_org hobby stugov newsp athletics perfarts {
+	generate `x'_cat=(`x'!=.)
+}
+egenerate num_clubs=rowtotal(youth_org_cat hobby_cat stugov_cat newsp_cat athletics_cat perfarts_cat)
+replace num_clubs=. if athletics_cat==.
+
+* Standardize
+foreach var of varlist social_age6 social_adult num_clubs athletics_cat {
+	egenerate `var'_std=std(`var'), mean(0) std(1)
+}
+
+* Composite 1: 4 elements (use in NLSY79-only analyses)
+egenerate soc_nlsy=rowmean(social_age6_std social_adult_std athletics_cat_std num_clubs_std)
+egenerate soc_nlsy_std=std(soc_nlsy), mean(0) std(1)
+
+* Composite 2: 2 elements (use in analyses with NLSY79 & NLSY97)
+egenerate soc_nlsy2=rowmean(social_age6_std social_adult_std)
+egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+
+** Non-Cognitive measures: Rotter & Rosenberg score
+egenerate rotter_std=std(rotter_score_1979), mean(0) std(1)
+replace rotter_std=-rotter_std
+egenerate rosen_std=std(rosenberg_score_1980), mean(0) std(1)
+egenerate noncog=rowmean(rotter_std rosen_std)
+egenerate noncog_std=std(noncog), mean(0) std(1)
+
+** Restrict sample to selected variables and compress
+keep caseid race sex age* urban1979-urban2012 div* metro* educ emp* wage* occ* ///
+	ind* soc_nlsy_std soc_nlsy2_std rotter_std rosen_std noncog_std
+compress
+
+** Reshape data long for main analysis
+reshape long age urban div metro emp wage wage_noschl occ occ1990dd ///
+	ind ind6090, i(caseid) j(year)
+
+** Save data for merge
+save "`nlsydir'/nlsy79_clean.dta", replace
+
+
+*************************
+****Clean NLSY97 Data****
+*************************
+
+** Import data
+import delimited "`import97dir'/`name97'.csv", case(preserve) clear 
+do "`import97dir'/`name97'-value-labels.do"
+tolower
+
+** Code variables as missing if values are less than zero
+foreach var of varlist _all {
+	replace `var'=. if `var'<0
+}
+** Individual ID codes
+rename pubid_1997 pubid
+** Demographics - recode to make them similar to NLSY79
+
+** Demographics
+generate race=1 if key_race_ethnicity_1997==2 /*Hispanic*/
+* Code mixed as Black, following NLSY79
+replace race=2 if key_race_ethnicity_1997==1 | key_race_ethnicity_1997==3 /*Black*/
+replace race=3 if key_race_ethnicity_1997==4 /*White Non-Hispanic*/
+generate sex=key_sex_1997
+generate age1997=1997-key_bdate_y_1997
+
+* Age by year
+forvalues y=1998(1)2011 {
+	local z=`y'-1997
+	generate age`y'=age1997+`z'
+}
+generate age2013=age1997+16
+
+** Urbanicity and regression
+forvalues y=1997(1)2011 {
+	generate urban`y'=cv_urban_rural_`y'
+	generate div`y'=cv_census_regression_`y'
+	generate metro`y'=cv_msa_`y'
+}
+generate urban2013=cv_urban_rural_2013
+generate div2013=cv_census_regression_2013
+generate metro2013=cv_msa_2013
+
+** Highest grade completed
+generate educ=cvc_hgc_ever_xrnd
+replace educ=. if educ==95
+
+** Employment since date of last interview (DLI)
+forvalues y=1997(1)2011 {
+	generate emp`y'=1 if yinc_1400_`y'==1
+	replace emp`y'=0 if yinc_1400_`y'==0
+}
+generate emp2013=1 if yinc_1400_2013==1
+replace emp2013=0 if yinc_1400_2013==0
+
+** Hourly rate of pay
+forvalues y=1997(1)2011 {
+	generate wage`y'=cv_hrly_pay_01_`y'/100
+}
+generate wage2013=cv_hrly_pay_01_2013/100
+
+* Hourly wage excluding those enrolled in school
+generate school1997=cv_enrollstat_1997>=8 & cv_enrollstat_1997!=.
+forvalues y=1998(1)2004 {
+	generate school`y'=cv_enrollstat_edt_`y'>=8 & cv_enrollstat_edt_`y'!=.
+}
+forvalues y=2005(1)2011 {
+		generate school`y'=cv_enrollstat_`y'>=8 & cv_enrollstat_`y'!=.
+}
+generate school2013=cv_enrollstat_2013>=8 & cv_enrollstat_2013!=.
+forvalues y=1997(1)2011 {
+	generate wage_noschl`y'=wage`y' if school`y'==0
+}
+generate wage_noschl2013=wage2013 if school2013==0
+
+** Occupation: Apply occ1990dd crosswalk (using occ80)
+forvalues y=1997(1)2011 {
+	rename yemp_occode_2002_01_`y' occ
+	replace occ=occ/10
+	merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogenerate
+	replace occ1990dd=653 if occ==650
+	replace occ1990dd=533 if occ==884
+	replace occ1990dd=439 if occ==416
+	replace occ1990dd=68 if occ==123
+	replace occ1990dd=814 if occ==911 | occ==950 | occ==973 | occ==974
+	replace occ1990dd=699 if occ==692 | occ==693 | occ==631
+	replace occ1990dd=326 if occ==521
+	replace occ1990dd=47 if occ==150
+	replace occ1990dd=779 if occ==812
+	replace occ1990dd=59 if occ==134
+	replace occ1990dd=214 if occ==194
+	replace occ1990dd=599 if occ==617 | occ==802	
+	display "Occupations not matched to occ1990dd: `y'"
+	levelsof occ if occ1990dd==.
+	rename occ occ`y'
+	rename occ1990dd occ1990dd`y'	
+}
+rename yemp_occode_2002_01_2013 occ
+replace occ=occ/10
+merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogenerate
+	replace occ1990dd=653 if occ==650
+	replace occ1990dd=533 if occ==884
+	replace occ1990dd=439 if occ==416
+	replace occ1990dd=68 if occ==123
+	replace occ1990dd=814 if occ==911 | occ==950 | occ==973 | occ==974
+	replace occ1990dd=699 if occ==692 | occ==693 | occ==631
+	replace occ1990dd=326 if occ==521
+	replace occ1990dd=47 if occ==150
+	replace occ1990dd=779 if occ==812
+	replace occ1990dd=59 if occ==134
+	replace occ1990dd=214 if occ==194
+	replace occ1990dd=599 if occ==617 | occ==802	
+display "Occupations not matched to occ1990dd: 2013"
+levelsof occ if occ1990dd==.
+rename occ occ2013
+rename occ1990dd occ1990dd2013
+
+** Industry: Apply ind6090 crosswalk (using ind00)
+forvalues y=1997(1)2011 {
+	rename yemp_indcode_2002_01_`y' ind00
+	replace ind00=floor(ind00/10)
+	replace ind00=49 if ind00==48
+	replace ind00=207 if ind00==200
+	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
+	display "Industries not matched to ind6090: `y'"
+	levelsof ind00 if ind6090==.
+	rename ind00 ind`y'
+	rename ind6090 ind6090`y'
+}
+rename yemp_indcode_2002_01_2013 ind00
+replace ind00=floor(ind00/10)
+replace ind00=49 if ind00==48
+replace ind00=207 if ind00==200
+merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
+display "Industries not matched to ind6090: 2013"
+levelsof ind00 if ind6090==.
+rename ind00 ind2013
+rename ind6090 ind60902013
+
+
+** Social and Non-Cognitive Skill Measures
+
+* Raw variables
+rename ytel_tipia_000001_2008 extraverted
+rename ytel_tipia_000006_2008 reserved
+
+rename ysaq_282j_2002 disorganized
+rename ysaq_282k_2002 conscientious
+rename ysaq_282l_2002 undependable
+rename ysaq_282m_2002 thorough
+rename ysaq_282q_2002 trusting
+rename ytel_tipia_000003_2008 disciplined
+rename ytel_tipia_000008_2008 careless
+
+* Social skills composite
+foreach x in extraverted reserved {
+	egenerate `x'_std=std(`x'), mean(0) std(1)
+}
+generate animated_std=-reserved_std
+
+egenerate soc_nlsy2=rowmean(extraverted_std animated_std)
+egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+
+* Non-cognitive skills composite
+foreach x in disorganized conscientious undependable thorough trusting disciplined careless {
+	egenerate `x'_std=std(`x'), mean(0) std(1)
+}
+generate organized_std=-disorganized_std
+generate dependable_std=-undependable_std
+generate careful_std=-careless_std
+
+egenerate noncog=rowmean(organized_std conscientious_std dependable_std thorough_std trusting_std disciplined_std careful_std)
+egenerate noncog_std=std(noncog), mean(0) std(1)
+
+** Restrict sample to selected variables
+keep pubid race sex age* urban* div* metro* educ emp* wage* occ* ///
+	ind* soc_nlsy2_std noncog_std
+
+** Reshape data as panel
+reshape long age urban div metro emp wage wage_noschl occ occ1990dd ind ind6090, ///
+	i(pubid) j(year)
+
+** Save data for merge
+save "`nlsydir'/nlsy97_clean.dta", replace
+
+
+************************************************
+****Append NLSY Cohorts and Further Cleaning****
+************************************************
+	
+** Append NLSY79 data and create sample indicators 
+*	Note: sample=1 if sample==nlsy97
+generate sample=1
+append using "`nlsydir'/nlsy79_clean.dta"
+replace sample=0 if sample!=1
+
+** Person ID
+replace pubid=caseid if pubid==.
+egenerate uniqueID=group(pubid sample)
+
+** ASVAB - Use Altonji, Bharadwaj and Lange (2009) file that gives age-adjusted 
+*	comparability across NLSY surveys*
+generate pid=pubid
+replace pid=caseid if pid==.
+rename age age_temp
+merge m:1 pid sample using "`afqtadj'/afqt_adjusted_final.dta", keep(master match) ///
+	keepusing(age weight pafqt afqt_std) nogenerate
+rename age age_test
+rename age_temp age
+rename afqt_std afqt
+egenerate afqt_std=std(afqt), mean(0) std(1)
+drop pid
+
+** Earnings adjustments
+
+* Logged earnings, excluding respondents enrolled in school
+generate ln_wage=ln(wage)
+generate ln_wage_noschl=ln(wage_noschl)
+replace ln_wage_noschl=ln_wage if year>=2008 & year<=2012 & sample==0
+drop ln_wage
+rename ln_wage_noschl ln_wage
+
+* Inflate to 2013 wages
+replace wage=wage*3.21 if year==1979
+replace wage=wage*2.83 if year==1980
+replace wage=wage*2.56 if year==1981
+replace wage=wage*2.41 if year==1982
+replace wage=wage*2.34 if year==1983
+replace wage=wage*2.24 if year==1984
+replace wage=wage*2.17 if year==1985
+replace wage=wage*2.13 if year==1986
+replace wage=wage*2.05 if year==1987
+replace wage=wage*1.97 if year==1988
+replace wage=wage*1.88 if year==1989
+replace wage=wage*1.78 if year==1990
+replace wage=wage*1.71 if year==1991
+replace wage=wage*1.66 if year==1992
+replace wage=wage*1.57 if year==1994
+replace wage=wage*1.48 if year==1996
+replace wage=wage*1.45 if year==1997
+replace wage=wage*1.43 if year==1998
+replace wage=wage*1.40 if year==1999
+replace wage=wage*1.35 if year==2000
+replace wage=wage*1.32 if year==2001
+replace wage=wage*1.29 if year==2002
+replace wage=wage*1.27 if year==2003
+replace wage=wage*1.23 if year==2004
+replace wage=wage*1.19 if year==2005
+replace wage=wage*1.16 if year==2006
+replace wage=wage*1.12 if year==2007
+replace wage=wage*1.08 if year==2008
+replace wage=wage*1.09 if year==2009
+replace wage=wage*1.07 if year==2010
+replace wage=wage*1.04 if year==2011
+replace wage=wage*1.01 if year==2012
+
+* Trim wages
+replace wage=3 if wage>0 & wage<3
+replace wage=200 if wage>200 & wage!=.
+
+** Merge in ONET measures
+merge m:1 occ1990dd using "`onetdir'/onet98_occ1990dd_pct.dta", keep(master match) nogenerate
+levelsof occ1990dd if socskills_onet1998_pct==.
+
+* Rename ONET measures
+foreach x in require_social number_facility math routine socskills service ///
+	reason info_use coord interact {
+	rename `x'_onet1998_pct `x'
+}
+
+** Interaction measure
+
+* Race-by-generateder
+generate female=(sex==2)
+generate hisp_male=(race==1 & sex==1)
+generate hisp_female=(race==1 & sex==2)
+generate black_male=(race==2 & sex==1)
+generate black_female=(race==2 & sex==2)
+
+* NLSY skills
+generate afqt_socnlsy=afqt_std*soc_nlsy_std
+generate afqt_socnlsy2=afqt_std*soc_nlsy2_std
+generate afqt_noncog=afqt_std*noncog_std
+
+* NLSY skills and ONET tasks
+generate afqt_math=afqt_std*math
+generate socnlsy_math=soc_nlsy_std*math
+generate afqt_socnlsy_math=afqt_std*soc_nlsy_std*math
+generate socnlsy2_math=soc_nlsy2_std*math
+generate afqt_socnlsy2_math=afqt_std*soc_nlsy2_std*math
+
+generate afqt_routine=afqt_std*routine
+generate socnlsy_routine=soc_nlsy_std*routine
+generate afqt_socnlsy_routine=afqt_std*soc_nlsy_std*routine
+generate socnlsy2_routine=soc_nlsy2_std*routine
+generate afqt_socnlsy2_routine=afqt_std*soc_nlsy2_std*routine
+
+generate afqt_socskills=afqt_std*socskills
+generate socnlsy_socskills=soc_nlsy_std*socskills
+generate afqt_socnlsy_socskills=afqt_std*soc_nlsy_std*socskills
+generate socnlsy2_socskills=soc_nlsy2_std*socskills
+generate afqt_socnlsy2_socskills=afqt_std*soc_nlsy2_std*socskills
+
+* Sample & NLSY skills
+generate afqt_sample=afqt_std*sample
+generate soc_nlsy2_sample=soc_nlsy2_std*sample
+generate afqt_socnlsy2_sample=afqt_socnlsy2*sample
+generate noncog_sample=noncog_std*sample
+
+* Samples, NLSY skills & ONET tasks
+foreach x in math routine socskills service {
+	generate afqt_`x'_sample=afqt_sample*`x'
+	generate socnlsy2_`x'_sample=soc_nlsy2_sample*`x'
+	generate afqt_socnlsy2_`x'_sample=afqt_socnlsy2_sample*`x'
+}
+foreach var of varlist require_social-interact {
+	generate `var'_sample=`var'*sample
+}
+
+** Completeness indicators
+generate complete79=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
+	afqt_std!=. & soc_nlsy_std!=.)
+generate complete97=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
+	afqt_std!=. & soc_nlsy2_std!=.)
+
+** Compress data
+compress
+
+** Save data
+save "`nlsydir'/nlsy_merged.dta", replace
