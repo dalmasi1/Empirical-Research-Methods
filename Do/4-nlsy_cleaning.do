@@ -143,7 +143,7 @@ forvalues y=1996(2)2012 {
 }
 
 ** Highest grade completed
-egenerate educ=rowmax(hgcrev*)
+egen educ=rowmax(hgcrev*)
 
 ** Employment since date of last interview (DLI)
 forvalues y=1979(1)1994 {
@@ -291,28 +291,28 @@ generate social_adult=health_soc_2_1985
 foreach x in youth_org hobby stugov newsp athletics perfarts {
 	generate `x'_cat=(`x'!=.)
 }
-egenerate num_clubs=rowtotal(youth_org_cat hobby_cat stugov_cat newsp_cat athletics_cat perfarts_cat)
+egen num_clubs=rowtotal(youth_org_cat hobby_cat stugov_cat newsp_cat athletics_cat perfarts_cat)
 replace num_clubs=. if athletics_cat==.
 
 * Standardize
 foreach var of varlist social_age6 social_adult num_clubs athletics_cat {
-	egenerate `var'_std=std(`var'), mean(0) std(1)
+	egen `var'_std=std(`var'), mean(0) std(1)
 }
 
 * Composite 1: 4 elements (use in NLSY79-only analyses)
-egenerate soc_nlsy=rowmean(social_age6_std social_adult_std athletics_cat_std num_clubs_std)
-egenerate soc_nlsy_std=std(soc_nlsy), mean(0) std(1)
+egen soc_nlsy=rowmean(social_age6_std social_adult_std athletics_cat_std num_clubs_std)
+egen soc_nlsy_std=std(soc_nlsy), mean(0) std(1)
 
 * Composite 2: 2 elements (use in analyses with NLSY79 & NLSY97)
-egenerate soc_nlsy2=rowmean(social_age6_std social_adult_std)
-egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+egen soc_nlsy2=rowmean(social_age6_std social_adult_std)
+egen soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
 
 ** Non-Cognitive measures: Rotter & Rosenberg score
-egenerate rotter_std=std(rotter_score_1979), mean(0) std(1)
+egen rotter_std=std(rotter_score_1979), mean(0) std(1)
 replace rotter_std=-rotter_std
-egenerate rosen_std=std(rosenberg_score_1980), mean(0) std(1)
-egenerate noncog=rowmean(rotter_std rosen_std)
-egenerate noncog_std=std(noncog), mean(0) std(1)
+egen rosen_std=std(rosenberg_score_1980), mean(0) std(1)
+egen noncog=rowmean(rotter_std rosen_std)
+egen noncog_std=std(noncog), mean(0) std(1)
 
 ** Restrict sample to selected variables and compress
 keep caseid race sex age* urban1979-urban2012 div* metro* educ emp* wage* occ* ///
@@ -482,23 +482,23 @@ rename ytel_tipia_000008_2008 careless
 
 * Social skills composite
 foreach x in extraverted reserved {
-	egenerate `x'_std=std(`x'), mean(0) std(1)
+	egen `x'_std=std(`x'), mean(0) std(1)
 }
 generate animated_std=-reserved_std
 
-egenerate soc_nlsy2=rowmean(extraverted_std animated_std)
-egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+egen soc_nlsy2=rowmean(extraverted_std animated_std)
+egen soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
 
 * Non-cognitive skills composite
 foreach x in disorganized conscientious undependable thorough trusting disciplined careless {
-	egenerate `x'_std=std(`x'), mean(0) std(1)
+	egen `x'_std=std(`x'), mean(0) std(1)
 }
 generate organized_std=-disorganized_std
 generate dependable_std=-undependable_std
 generate careful_std=-careless_std
 
-egenerate noncog=rowmean(organized_std conscientious_std dependable_std thorough_std trusting_std disciplined_std careful_std)
-egenerate noncog_std=std(noncog), mean(0) std(1)
+egen noncog=rowmean(organized_std conscientious_std dependable_std thorough_std trusting_std disciplined_std careful_std)
+egen noncog_std=std(noncog), mean(0) std(1)
 
 ** Restrict sample to selected variables
 keep pubid race sex age* urban* div* metro* educ emp* wage* occ* ///
@@ -524,7 +524,7 @@ replace sample=0 if sample!=1
 
 ** Person ID
 replace pubid=caseid if pubid==.
-egenerate uniqueID=group(pubid sample)
+egen uniqueID=group(pubid sample)
 
 ** ASVAB - Use Altonji, Bharadwaj and Lange (2009) file that gives age-adjusted 
 *	comparability across NLSY surveys*
@@ -536,7 +536,7 @@ merge m:1 pid sample using "`afqtadj'/afqt_adjusted_final.dta", keep(master matc
 rename age age_test
 rename age_temp age
 rename afqt_std afqt
-egenerate afqt_std=std(afqt), mean(0) std(1)
+egen afqt_std=std(afqt), mean(0) std(1)
 drop pid
 
 ** Earnings adjustments

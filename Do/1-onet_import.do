@@ -614,19 +614,19 @@ foreach var in a12lv00m k14lv00m b05lv00m w85ij00m w80ao00m c01lv00m c02lv00m c0
 ** Create composites
 	
 * Math
-egenerate math_onet1998=rowmean(a12lv00m k14lv00m b05lv00m)
+egen math_onet1998=rowmean(a12lv00m k14lv00m b05lv00m)
 drop a12lv00m k14lv00m b05lv00m
 
 * Routine
-egenerate routine_onet1998=rowmean(w80ao00m w85ij00m)
+egen routine_onet1998=rowmean(w80ao00m w85ij00m)
 drop w80ao00m w85ij00m
 
 * Social skills
-egenerate socskills_onet1998=rowmean(c01lv00m c02lv00m c03lv00m c04lv00m)
+egen socskills_onet1998=rowmean(c01lv00m c02lv00m c03lv00m c04lv00m)
 drop c01lv00m c02lv00m c03lv00m c04lv00m
 
 * Service
-egenerate service_onet1998=rowmean(g30lv00m c06lv00m)
+egen service_onet1998=rowmean(g30lv00m c06lv00m)
 drop g30lv00m c06lv00m
 generate customer_onet1998=w21ij00m
 
@@ -634,22 +634,22 @@ generate customer_onet1998=w21ij00m
 rename w14cn00m require_social_onet1998
 
 * Reason
-egenerate reason_onet1998=rowmean(a02lv00m a08lv00m a09lv00m)
+egen reason_onet1998=rowmean(a02lv00m a08lv00m a09lv00m)
 drop a02lv00m a08lv00m a09lv00m
 
 * Number facility
 rename a13lv00m number_facility_onet1998
 
 * Information use
-egenerate info_use_onet1998=rowmean(g01lv00m g02lv00m g08lv00m g09lv00m)
+egen info_use_onet1998=rowmean(g01lv00m g02lv00m g08lv00m g09lv00m)
 drop g01lv00m g02lv00m g08lv00m g09lv00m
 
 * Coordinate
-egenerate coord_onet1998=rowmean(g34lv00m g35lv00m)
+egen coord_onet1998=rowmean(g34lv00m g35lv00m)
 drop g34lv00m g35lv00m
 
 * Interact
-egenerate interact_onet1998=rowmean(g26lv00m g27lv00m g28lv00m g29lv00m)
+egen interact_onet1998=rowmean(g26lv00m g27lv00m g28lv00m g29lv00m)
 drop g26lv00m g27lv00m g28lv00m g29lv00m
 
 ** Rescale composites

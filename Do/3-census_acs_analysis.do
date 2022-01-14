@@ -147,7 +147,7 @@ foreach y in 2000 2012 {
 	collapse (rawsummarize) lswt, by(occ1990dd)
 	
 	* Calculate labor supply in each occupation
-	egenerate t=summarize(lswt)
+	egen t=summarize(lswt)
 	generate occ_share`y'=lswt/t
 	
 	* Save data
@@ -307,7 +307,7 @@ twoway connected math_onet1998_centile socskills_onet1998_centile routine_onet19
 	note("Occupational Task Intensity based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ///
 	ytitle("Mean Task Input in Percentiles of 1980 Distribution", size(small)) yscale(range(35 65)) ylabel(35(10)65) ///
-	legenerated(rows(1) label(1 "Nonroutine Analytical") label(2 "Social Skills") label(3 "Routine") ///
+	legend(rows(1) label(1 "Nonroutine Analytical") label(2 "Social Skills") label(3 "Routine") ///
 	size(small)) msymbol(Oh Dh Sh) msize(medsmall medsmallmedsmall) clcolor(navy maroon dkorange) ///
 	mcolor(navy maroon dkorange) graphregion(color(white) margin(small))
 graph save "`figdir'/fig3.gph", replace		
@@ -323,7 +323,7 @@ twoway connected math_dot77_centile math_onet1998_centile routine_dot77_centile 
 	note("Occupational Task Intensities based on 1977 DOT and 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ///
 	ytitle("Mean Task Input in Percentiles of 1980 Distribution", size(small)) yscale(range(35 65)) ylabel(35(10)65) ///
-	legenerated(rows(3) label(1 "Math (DOT)") label(2 "Math (ONET)") label(3 "Routine (DOT)") ///
+	legend(rows(3) label(1 "Math (DOT)") label(2 "Math (ONET)") label(3 "Routine (DOT)") ///
 	label(4 "Routine (ONET)") label(5 "DCP (DOT)") label(6 "Social Skills (ONET)") size(small)) ///
 	msymbol(Oh O Sh S Th T) msize(medsmall medsmall medsmall medsmall medsmall medsmall) ///
 	clcolor(navy navy dkorange dkorange maroon maroon) mcolor(navy navy dkorange dkorange maroon maroon) ///
@@ -376,7 +376,7 @@ foreach y in 1980 1990 2000 2006 2009 2012 {
 	collapse (rawsummarize) lswt (mean) hrwage [aw=lswt], by(taskcat)
 	
 	* Employment shares
-	egenerate totls=total(lswt)
+	egen totls=total(lswt)
 	generate empshr=lswt/totls
 	drop totls lswt
 
@@ -396,7 +396,7 @@ append using "`collapdir'/employ_wage_taskcat_1990.dta" "`collapdir'/employ_wage
 ** Employment share relative to 1980 (Level change)
 forvalues y=1/4 {
 	generate temp=empshr`y' if year==1980
-	egenerate empshr1980=max(temp)
+	egen empshr1980=max(temp)
 	replace empshr`y'=empshr`y'-empshr1980
 	drop temp empshr1980
 }
@@ -404,7 +404,7 @@ forvalues y=1/4 {
 ** Wages relatives to 1980 (Percent change)
 forvalues y=1/4 {
 	generate temp=hrwage`y' if year==1980
-	egenerate hrwage1980=max(temp)
+	egen hrwage1980=max(temp)
 	replace hrwage`y'=(hrwage`y'-hrwage1980)/hrwage1980
 	drop temp hrwage1980
 }
@@ -419,7 +419,7 @@ twoway connected empshr1 empshr2 empshr3 empshr4 year, ///
 	subtitle("1980 to 2012", size(medsmall)) ///
 	note("Occupational Task Intensities based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ytitle("")  ///
-	legenerated(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
+	legend(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
 	label(3 "Low Social, High Math") label(4 "Low Social, Low Math") size(small)) ///
 	ylabel(-.05(.05).05) msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	clcolor(navy maroon forest_green dkorange) mcolor(navy maroon forest_green dkorange) ///
@@ -434,7 +434,7 @@ twoway connected hrwage1 hrwage2 hrwage3 hrwage4 year, ///
 	subtitle("1980 to 2012", size(medsmall)) ///
 	note("Occupational Task Intensities based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ytitle("")  ///
-	legenerated(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
+	legend(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
 	label(3 "Low Social, High Math") label(4 "Low Social, Low Math") size(small)) ///
 	msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	clcolor(navy maroon forest_green dkorange) mcolor(navy maroon forest_green dkorange) ///
@@ -453,7 +453,7 @@ foreach d in 1980 2012 {
 	* Collapse labor supply by occupation
 	collapse (rawsummarize) lswt, by(occ1990dd)
 	* Calculate share of labor supply in each occupation
-	egenerate t=total(lswt)
+	egen t=total(lswt)
 	generate occ_share`d'=lswt/t
 	keep occ1990dd occ_share`d'
 	save "`collapdir'/occshare`d'.dta", replace
@@ -529,7 +529,7 @@ lowess wage80_12 ln_hrwage_pct if math_onet1998_pct<=50 & socskills_onet1998_pct
 
 * Graph alternative social skills against 1980 wage distribution
 sort ln_hrwage_pct
-tw scatter socskills_wage interact_wage coord_wage ln_hrwage_pct, connect(l l l) legenerated(rows(1) ///
+tw scatter socskills_wage interact_wage coord_wage ln_hrwage_pct, connect(l l l) legend(rows(1) ///
 	label(1 "Social Skills") label(2 "Interaction") label(3 "Coordinate") size(small)) msymbol(Oh Dh Th) ///
 	msize(medsmall medsmall medsmall)  ylabel(30(10)80) ///
 	l1title("Occupation's Task Intensity Percentile", size(small)) ///
@@ -545,7 +545,7 @@ graph export "`figdir'/figA1.pdf", replace
 ****Figure A3 - Smoothed Changes in Employment by Occupational Task Intensity****
 
 * Graph change in employment shares 1980-2012 against 1980 wage distribution
-tw scatter hiMATHhiSS1 loMATHhiSS1 hiMATHloSS1 loMATHloSS1 ln_hrwage_pct, connect(l l l l) legenerated(rows(2) ///
+tw scatter hiMATHhiSS1 loMATHhiSS1 hiMATHloSS1 loMATHloSS1 ln_hrwage_pct, connect(l l l l) legend(rows(2) ///
 	label(1 "High Social, High Math") label(2 "High Social, Low Math") label(3 "Low Social, High Math") ///
 	label(4 "Low Social, Low Math") size(small)) msymbol(Oh Dh Th Sh) ///
 	msize(medsmall medsmall medsmall medsmall) ylabel(-0.2(.1)0.3) ///
@@ -561,7 +561,7 @@ graph export "`figdir'/figA3.pdf", replace
 ****Figure A4 - Smoothed Changes in Median Wages by Occupational Task Intensity****
 
 * Graph change in median wage 1980-2012 against wage distribution
-tw scatter hiMATHhiSS2 loMATHhiSS2 hiMATHloSS2 loMATHloSS2 ln_hrwage_pct, connect(l l l l) legenerated(rows(2) ///
+tw scatter hiMATHhiSS2 loMATHhiSS2 hiMATHloSS2 loMATHloSS2 ln_hrwage_pct, connect(l l l l) legend(rows(2) ///
 	label(1 "High Social, High Math") label(2 "High Social, Low Math") label(3 "Low Social, High Math") ///
 	label(4 "Low Social, Low Math") size(small)) msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	ylabel(-0.2(.1)0.4) l1title("Change in Median Real Log Hourly Wage", size(small)) ytitle("") ///
@@ -651,7 +651,7 @@ foreach y in 1980 1990 2000 2012 {
 generate math_soc=math_onet*socskills_onet
 
 * Create generateder x education x industry fixed effects
-egenerate all_FE=group(sex edu_bin ind)
+egen all_FE=group(sex edu_bin ind)
 
 * Indicator for generateder-educ-occ-ind cell having non-missing data on labor supply
 *	for all periods
