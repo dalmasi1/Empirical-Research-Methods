@@ -1,0 +1,5 @@
+Col 3, Test 1: .10770642
+Col 3, Test 2: 5.346e-08
+Col 4, Test 1: .02340988
+Col 4, Test 2: .00059466
+Col 4, Test 3: .00017071
