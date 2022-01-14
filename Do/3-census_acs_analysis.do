@@ -144,11 +144,11 @@ foreach y in 2000 2012 {
 	** Collapse and calculate occupation shares
 
 	* Collapse labor supply by consolidated occupations
-	collapse (rawsum) lswt, by(occ1990dd)
+	collapse (rawsummarize) lswt, by(occ1990dd)
 	
 	* Calculate labor supply in each occupation
-	egen t=sum(lswt)
-	gen occ_share`y'=lswt/t
+	egenerate t=summarize(lswt)
+	generate occ_share`y'=lswt/t
 	
 	* Save data
 	keep occ1990dd occ_share`y'
@@ -159,17 +159,17 @@ foreach y in 2000 2012 {
 
 * Merge 2000 & 2012 cognitive occupation shares
 use "`collapdir'/occshare2012_cog_occs.dta", clear
-merge 1:1 occ1990dd using "`collapdir'/occshare2000_cog_occs.dta", keep(1 3) nogen
+merge 1:1 occ1990dd using "`collapdir'/occshare2000_cog_occs.dta", keep(1 3) nogenerate
 
 * Change in occupation share
-gen share00_12=100*(occ_share2012-occ_share2000)
+generate share00_12=100*(occ_share2012-occ_share2000)
 
 * Indicator for STEM occupations
-gen stem=(occ1990dd>=43 & occ1990dd<=83) | (occ1990dd>=214 & occ1990dd<=235)
+generate stem=(occ1990dd>=43 & occ1990dd<=83) | (occ1990dd>=214 & occ1990dd<=235)
 replace stem=0 if occ1990dd==234
 
 * Merge in occupation titles
-merge 1:1 occ1990dd using "`occdir'/occ1990dd_titles.dta", keep(1 3) nogen
+merge 1:1 occ1990dd using "`occdir'/occ1990dd_titles.dta", keep(1 3) nogenerate
 
 * Drop non-cognitive occupations
 drop if occ1990dd>235
@@ -240,7 +240,7 @@ foreach year in 1980 1990 2000 2006 2009 2012 {
 	drop if taskmerge == 0
 
 	* Determine mean task content of each sex-education-industry cell
-	collapse (rawsum) lswt (mean) math_onet1998 socskills_onet1998 service_onet1998 ///
+	collapse (rawsummarize) lswt (mean) math_onet1998 socskills_onet1998 service_onet1998 ///
 		routine_onet1998 math_dot77 dcp_dot77 routine_dot77 [aweight=lswt], by(sex edu_bin ind6090)
 
 	** Overall centiles	
@@ -264,7 +264,7 @@ foreach year in 1980 1990 2000 2006 2009 2012 {
 		foreach task in "math_onet1998" "socskills_onet1998" "service_onet1998" "routine_onet1998" ///
 			"math_dot77" "dcp_dot77" "routine_dot77" {
 			forvalues j = 1/99 {
-				quietly sum `task'_p`j', meanonly
+				quietly summarize `task'_p`j', meanonly
 				local `task'80_p`j' = r(mean)
 			}
 		}
@@ -274,7 +274,7 @@ foreach year in 1980 1990 2000 2006 2009 2012 {
 	* Determine each cell's counterfactual 1980 percentile
 	foreach task in "math_onet1998" "socskills_onet1998" "service_onet1998" "routine_onet1998" ///
 		"math_dot77" "dcp_dot77" "routine_dot77" {
-		gen `task'_centile = 0
+		generate `task'_centile = 0
 		forvalues j = 1/99 {
 			replace `task'_centile = `j' if `task' >= ``task'80_p`j''
 		}
@@ -283,7 +283,7 @@ foreach year in 1980 1990 2000 2006 2009 2012 {
 	* Save mean centiles
 	preserve
 	collapse *centile [aweight=lswt]
-	gen year = `year'
+	generate year = `year'
 	save "`collapdir'/centiles_`year'.dta", replace
 	restore
 
@@ -307,7 +307,7 @@ twoway connected math_onet1998_centile socskills_onet1998_centile routine_onet19
 	note("Occupational Task Intensity based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ///
 	ytitle("Mean Task Input in Percentiles of 1980 Distribution", size(small)) yscale(range(35 65)) ylabel(35(10)65) ///
-	legend(rows(1) label(1 "Nonroutine Analytical") label(2 "Social Skills") label(3 "Routine") ///
+	legenerated(rows(1) label(1 "Nonroutine Analytical") label(2 "Social Skills") label(3 "Routine") ///
 	size(small)) msymbol(Oh Dh Sh) msize(medsmall medsmallmedsmall) clcolor(navy maroon dkorange) ///
 	mcolor(navy maroon dkorange) graphregion(color(white) margin(small))
 graph save "`figdir'/fig3.gph", replace		
@@ -323,7 +323,7 @@ twoway connected math_dot77_centile math_onet1998_centile routine_dot77_centile 
 	note("Occupational Task Intensities based on 1977 DOT and 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ///
 	ytitle("Mean Task Input in Percentiles of 1980 Distribution", size(small)) yscale(range(35 65)) ylabel(35(10)65) ///
-	legend(rows(3) label(1 "Math (DOT)") label(2 "Math (ONET)") label(3 "Routine (DOT)") ///
+	legenerated(rows(3) label(1 "Math (DOT)") label(2 "Math (ONET)") label(3 "Routine (DOT)") ///
 	label(4 "Routine (ONET)") label(5 "DCP (DOT)") label(6 "Social Skills (ONET)") size(small)) ///
 	msymbol(Oh O Sh S Th T) msize(medsmall medsmall medsmall medsmall medsmall medsmall) ///
 	clcolor(navy navy dkorange dkorange maroon maroon) mcolor(navy navy dkorange dkorange maroon maroon) ///
@@ -344,14 +344,14 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse to the mean of hourly wages, education & ONET variables, by 1990dd occupation
-collapse (rawsum) lswt (mean) math_onet1998 socskills_onet1998 [aw=lswt], by(occ1990dd)
+collapse (rawsummarize) lswt (mean) math_onet1998 socskills_onet1998 [aw=lswt], by(occ1990dd)
 
 * Calculate percentiles of ONET variables in 1980, weighted by labor supply
 foreach x in math socskills {
 xtile `x'_pct = `x'_onet1998 [aweight=lswt], nq(100)
 }	
 * Define 4 occupation categories: Above vs. below median in social skill & math
-gen taskcat=1 if socskills_pct>50 & math_pct>50
+generate taskcat=1 if socskills_pct>50 & math_pct>50
 replace taskcat=2 if socskills_pct>50 & math_pct<=50
 replace taskcat=3 if socskills_pct<=50 & math_pct>50
 replace taskcat=4 if socskills_pct<=50 & math_pct<=50
@@ -370,18 +370,18 @@ foreach y in 1980 1990 2000 2006 2009 2012 {
 	drop if onetmerge==1
 
 	* Merge in task categories
-	merge m:1 occ1990dd using "`collapdir'/taskcat1980.dta", nogen
+	merge m:1 occ1990dd using "`collapdir'/taskcat1980.dta", nogenerate
 
 	* Collapse employment and wages by task category
-	collapse (rawsum) lswt (mean) hrwage [aw=lswt], by(taskcat)
+	collapse (rawsummarize) lswt (mean) hrwage [aw=lswt], by(taskcat)
 	
 	* Employment shares
-	egen totls=total(lswt)
-	gen empshr=lswt/totls
+	egenerate totls=total(lswt)
+	generate empshr=lswt/totls
 	drop totls lswt
 
 	* Reshape wide
-	gen year=`y'
+	generate year=`y'
 	reshape wide empshr hrwage, i(year) j(taskcat)
 	
 	* Save yearly data
@@ -395,16 +395,16 @@ append using "`collapdir'/employ_wage_taskcat_1990.dta" "`collapdir'/employ_wage
 
 ** Employment share relative to 1980 (Level change)
 forvalues y=1/4 {
-	gen temp=empshr`y' if year==1980
-	egen empshr1980=max(temp)
+	generate temp=empshr`y' if year==1980
+	egenerate empshr1980=max(temp)
 	replace empshr`y'=empshr`y'-empshr1980
 	drop temp empshr1980
 }
 
 ** Wages relatives to 1980 (Percent change)
 forvalues y=1/4 {
-	gen temp=hrwage`y' if year==1980
-	egen hrwage1980=max(temp)
+	generate temp=hrwage`y' if year==1980
+	egenerate hrwage1980=max(temp)
 	replace hrwage`y'=(hrwage`y'-hrwage1980)/hrwage1980
 	drop temp hrwage1980
 }
@@ -419,7 +419,7 @@ twoway connected empshr1 empshr2 empshr3 empshr4 year, ///
 	subtitle("1980 to 2012", size(medsmall)) ///
 	note("Occupational Task Intensities based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ytitle("")  ///
-	legend(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
+	legenerated(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
 	label(3 "Low Social, High Math") label(4 "Low Social, Low Math") size(small)) ///
 	ylabel(-.05(.05).05) msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	clcolor(navy maroon forest_green dkorange) mcolor(navy maroon forest_green dkorange) ///
@@ -434,7 +434,7 @@ twoway connected hrwage1 hrwage2 hrwage3 hrwage4 year, ///
 	subtitle("1980 to 2012", size(medsmall)) ///
 	note("Occupational Task Intensities based on 1998 O*NET", size(small)) ///
 	caption("Sources: 1980-2000 Census, 2005-2013 ACS", size(vsmall)) xtitle("") ytitle("")  ///
-	legend(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
+	legenerated(rows(2) label(1 "High Social, High Math") label(2 "High Social, Low Math") ///
 	label(3 "Low Social, High Math") label(4 "Low Social, Low Math") size(small)) ///
 	msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	clcolor(navy maroon forest_green dkorange) mcolor(navy maroon forest_green dkorange) ///
@@ -451,10 +451,10 @@ graph export "`figdir'/fig5.pdf", replace
 foreach d in 1980 2012 {
 	use "`cleandir'/`d'.dta", clear
 	* Collapse labor supply by occupation
-	collapse (rawsum) lswt, by(occ1990dd)
+	collapse (rawsummarize) lswt, by(occ1990dd)
 	* Calculate share of labor supply in each occupation
-	egen t=total(lswt)
-	gen occ_share`d'=lswt/t
+	egenerate t=total(lswt)
+	generate occ_share`d'=lswt/t
 	keep occ1990dd occ_share`d'
 	save "`collapdir'/occshare`d'.dta", replace
 }
@@ -476,7 +476,7 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse to the mean of hourly wages, education & ONET variables, by 1990dd occupation
-collapse (rawsum) lswt (mean) ln_hrwage math_onet1998 socskills_onet1998 ///
+collapse (rawsummarize) lswt (mean) ln_hrwage math_onet1998 socskills_onet1998 ///
 	coord_onet1998 interact_onet1998 [aw=lswt], by(occ1990dd)
 
 * Calculate percentiles of ONET variables in 1980, weighted by labor supply
@@ -488,48 +488,48 @@ foreach x in ln_hrwage math_onet1998 socskills_onet1998 coord_onet1998 interact_
 
 * Merge in employment shares for 1990-2012
 foreach y in 1980 2012 {
-	merge 1:1 occ1990dd using "`collapdir'/occshare`y'.dta", keep(master match) nogen
-	merge 1:1 occ1990dd using "`collapdir'/medwage`y'.dta", keep(master match) nogen
+	merge 1:1 occ1990dd using "`collapdir'/occshare`y'.dta", keep(master match) nogenerate
+	merge 1:1 occ1990dd using "`collapdir'/medwage`y'.dta", keep(master match) nogenerate
 }
 
 * Calculate changes in employment shares and median wages from 1980 to 2012
-gen share80_12=100*(occ_share2012-occ_share1980)
-gen wage80_12=(ln_medwage2012-ln_medwage1980)
+generate share80_12=100*(occ_share2012-occ_share1980)
+generate wage80_12=(ln_medwage2012-ln_medwage1980)
 
 ** Smoothed relationships between wage percentile, task percentile & employment/wage changes
 
 * Lowess regression of ONET social skills measures on 1980 wage distribution
 foreach x in socskills interact coord {
-	lowess `x'_onet1998_pct ln_hrwage_pct, bwidth(0.8) gen(`x'_wage) nograph
+	lowess `x'_onet1998_pct ln_hrwage_pct, bwidth(0.8) generate(`x'_wage) nograph
 }
 
 * Lowess regression of change in employment shares 1980-2012 on 1980 wage distribution,
 *	for each possible combination of high and low ONET social skills & math
 lowess share80_12 ln_hrwage_pct if math_onet1998_pct>50 & socskills_onet1998_pct>50, ///
-	bwidth(1) gen(hiMATHhiSS1) nograph
+	bwidth(1) generate(hiMATHhiSS1) nograph
 lowess share80_12 ln_hrwage_pct if math_onet1998_pct<=50 & socskills_onet1998_pct>50, ///
-	bwidth(1) gen(loMATHhiSS1) nograph
+	bwidth(1) generate(loMATHhiSS1) nograph
 lowess share80_12 ln_hrwage_pct if math_onet1998_pct>50 & socskills_onet1998_pct<=50, ///
-	bwidth(1) gen(hiMATHloSS1) nograph	
+	bwidth(1) generate(hiMATHloSS1) nograph	
 lowess share80_12 ln_hrwage_pct if math_onet1998_pct<=50 & socskills_onet1998_pct<=50, ///
-	bwidth(1) gen(loMATHloSS1) nograph
+	bwidth(1) generate(loMATHloSS1) nograph
 
 * Lowess regression of change in median real log hourly wage 1980-2012 on 1980 wage distribution,
 *	for each possible combination of high and low ONET social skills & math
 lowess wage80_12 ln_hrwage_pct if math_onet1998_pct>50 & socskills_onet1998_pct>50, ///
-	bwidth(1) gen(hiMATHhiSS2) nograph
+	bwidth(1) generate(hiMATHhiSS2) nograph
 lowess wage80_12 ln_hrwage_pct if math_onet1998_pct<=50 & socskills_onet1998_pct>50, ///
-	bwidth(1) gen(loMATHhiSS2) nograph
+	bwidth(1) generate(loMATHhiSS2) nograph
 lowess wage80_12 ln_hrwage_pct if math_onet1998_pct>50 & socskills_onet1998_pct<=50, ///
-	bwidth(1) gen(hiMATHloSS2) nograph
+	bwidth(1) generate(hiMATHloSS2) nograph
 lowess wage80_12 ln_hrwage_pct if math_onet1998_pct<=50 & socskills_onet1998_pct<=50, ///
-	bwidth(1) gen(loMATHloSS2) nograph
+	bwidth(1) generate(loMATHloSS2) nograph
 
 ****Figure A1 - Social Skills Measure Robust to Alternative Definitions****
 
 * Graph alternative social skills against 1980 wage distribution
 sort ln_hrwage_pct
-tw scatter socskills_wage interact_wage coord_wage ln_hrwage_pct, connect(l l l) legend(rows(1) ///
+tw scatter socskills_wage interact_wage coord_wage ln_hrwage_pct, connect(l l l) legenerated(rows(1) ///
 	label(1 "Social Skills") label(2 "Interaction") label(3 "Coordinate") size(small)) msymbol(Oh Dh Th) ///
 	msize(medsmall medsmall medsmall)  ylabel(30(10)80) ///
 	l1title("Occupation's Task Intensity Percentile", size(small)) ///
@@ -545,7 +545,7 @@ graph export "`figdir'/figA1.pdf", replace
 ****Figure A3 - Smoothed Changes in Employment by Occupational Task Intensity****
 
 * Graph change in employment shares 1980-2012 against 1980 wage distribution
-tw scatter hiMATHhiSS1 loMATHhiSS1 hiMATHloSS1 loMATHloSS1 ln_hrwage_pct, connect(l l l l) legend(rows(2) ///
+tw scatter hiMATHhiSS1 loMATHhiSS1 hiMATHloSS1 loMATHloSS1 ln_hrwage_pct, connect(l l l l) legenerated(rows(2) ///
 	label(1 "High Social, High Math") label(2 "High Social, Low Math") label(3 "Low Social, High Math") ///
 	label(4 "Low Social, Low Math") size(small)) msymbol(Oh Dh Th Sh) ///
 	msize(medsmall medsmall medsmall medsmall) ylabel(-0.2(.1)0.3) ///
@@ -561,7 +561,7 @@ graph export "`figdir'/figA3.pdf", replace
 ****Figure A4 - Smoothed Changes in Median Wages by Occupational Task Intensity****
 
 * Graph change in median wage 1980-2012 against wage distribution
-tw scatter hiMATHhiSS2 loMATHhiSS2 hiMATHloSS2 loMATHloSS2 ln_hrwage_pct, connect(l l l l) legend(rows(2) ///
+tw scatter hiMATHhiSS2 loMATHhiSS2 hiMATHloSS2 loMATHloSS2 ln_hrwage_pct, connect(l l l l) legenerated(rows(2) ///
 	label(1 "High Social, High Math") label(2 "High Social, Low Math") label(3 "Low Social, High Math") ///
 	label(4 "Low Social, Low Math") size(small)) msymbol(Oh Dh Th Sh) msize(medsmall medsmall medsmall medsmall) ///
 	ylabel(-0.2(.1)0.4) l1title("Change in Median Real Log Hourly Wage", size(small)) ytitle("") ///
@@ -585,7 +585,7 @@ use "`cleandir'/1980.dta", clear
 drop if taskmerge==0
 
 * Collapse by occ1990dd
-collapse (rawsum) lswt (mean) ln_hrwage math_dot77 dcp_dot77 sts_dot77 finger_dot77 ///
+collapse (rawsummarize) lswt (mean) ln_hrwage math_dot77 dcp_dot77 sts_dot77 finger_dot77 ///
 	ehf_dot77 require_social_onet1998-interact_onet1998 [aw=lswt], by(occ1990dd)
 
 * Turn ONET variables into percentiles
@@ -635,8 +635,8 @@ rename ind6090 ind
 * Consolidate years for 2012 data
 replace year=2012 if year==2011 | year==2012 | year==2013
 
-* Collapse by year, gender, education, occupation & industry
-collapse (mean) ln_hrwage require_social_onet-interact_onet (rawsum) lswt ///
+* Collapse by year, generateder, education, occupation & industry
+collapse (mean) ln_hrwage require_social_onet-interact_onet (rawsummarize) lswt ///
 	[aw=lswt], by(year sex edu_bin occ ind)
 
 * Reshape wide
@@ -644,21 +644,21 @@ reshape wide lswt ln_hrwage, i(sex edu_bin occ ind) j(year)
 
 * Log labor supply
 foreach y in 1980 1990 2000 2012 {
-	gen ln_lswt`y'=ln(lswt`y')
+	generate ln_lswt`y'=ln(lswt`y')
 }
 
 * Interaction between math & social skills ONET task content
-gen math_soc=math_onet*socskills_onet
+generate math_soc=math_onet*socskills_onet
 
-* Create gender x education x industry fixed effects
-egen all_FE=group(sex edu_bin ind)
+* Create generateder x education x industry fixed effects
+egenerate all_FE=group(sex edu_bin ind)
 
-* Indicator for gender-educ-occ-ind cell having non-missing data on labor supply
+* Indicator for generateder-educ-occ-ind cell having non-missing data on labor supply
 *	for all periods
-gen sample=ln_lswt1980!=. & ln_lswt1990!=. & ln_lswt2000!=. & ln_lswt2012!=.
+generate sample=ln_lswt1980!=. & ln_lswt1990!=. & ln_lswt2000!=. & ln_lswt2012!=.
 
 * Indicator for management occupations
-gen manage=.
+generate manage=.
 foreach x in 4 7 8 9 13 14 15 18 22 243 303 413 414 415 433 448 450 470 473 ///
 	494 503 558 628 803 {
 	replace manage=1 if occ==`x'
@@ -666,8 +666,8 @@ foreach x in 4 7 8 9 13 14 15 18 22 243 303 413 414 415 433 448 450 470 473 ///
 replace manage=0 if manage!=1
 
 * Indicators for health & education occupations
-gen health=(occ>=83 & occ<=106) | (occ>=203 & occ<=208)
-gen educ=(occ>=154 & occ<=165)
+generate health=(occ>=83 & occ<=106) | (occ>=203 & occ<=208)
+generate educ=(occ>=154 & occ<=165)
 
 * Save data
 save "`cleandir'/1980_2012_app_tables.dta", replace

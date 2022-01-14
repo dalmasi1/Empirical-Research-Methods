@@ -70,7 +70,7 @@ save "`inddir'/ind00.dta", replace
 
 use "`occdir'/occ70-80cw.dta", clear
 rename occ80 occ
-merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", keep(match) nogen
+merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", keep(match) nogenerate
 drop occ
 save "`occdir'/occ1970_occ1990dd.dta", replace
 
@@ -83,7 +83,7 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse ONET variables by occ1990dd
-collapse (rawsum) lswt (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
+collapse (rawsummarize) lswt (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
 
 * Turn ONET variables into percentiles weighted by 1980 labor supply
 foreach var of varlist require_social_onet1998-interact_onet1998 {
@@ -114,34 +114,34 @@ foreach var of varlist _all {
 rename caseid_1979 caseid
 
 ** Demographics
-gen race=sample_race_78scrn
-gen sex=sample_sex_1979
-gen age1979=fam_1b_1979
+generate race=sample_race_78scrn
+generate sex=sample_sex_1979
+generate age1979=fam_1b_1979
 
 * Age by year
 forvalues y=1980(1)1994 {
 	local z=`y'-1979
-	gen age`y'=age1979+`z'
+	generate age`y'=age1979+`z'
 }
 forvalues y=1996(2)2012 {
 	local z=`y'-1979
-	gen age`y'=age1979+`z'
+	generate age`y'=age1979+`z'
 }
 
-** Urbanicity and region
+** Urbanicity and regression
 forvalues y=1979(1)1994 {
-	gen urban`y'=urban_rural_`y'
-	gen div`y'=region_`y'
-	gen metro`y'=smsares_`y'
+	generate urban`y'=urban_rural_`y'
+	generate div`y'=regression_`y'
+	generate metro`y'=smsares_`y'
 }
 forvalues y=1996(2)2012 {
-	gen urban`y'=urban_rural_`y'
-	gen div`y'=region_`y'
-	gen metro`y'=smsares_`y'
+	generate urban`y'=urban_rural_`y'
+	generate div`y'=regression_`y'
+	generate metro`y'=smsares_`y'
 }
 
 ** Highest grade completed
-egen educ=rowmax(hgcrev*)
+egenerate educ=rowmax(hgcrev*)
 
 ** Employment since date of last interview (DLI)
 forvalues y=1979(1)1994 {
@@ -155,21 +155,21 @@ forvalues y=1996(2)2012 {
 
 ** Hourly rate of pay
 forvalues y=1979(1)1994 {
-	gen wage`y'=cpshrp_`y'/100
+	generate wage`y'=cpshrp_`y'/100
 }
 forvalues y=1996(2)2012 {
-	gen wage`y'=hrp1_`y'/100
+	generate wage`y'=hrp1_`y'/100
 }
 
 * Hourly wage excluding those enrolled in school
 forvalues y=79(1)94 {
-		gen wage_noschl19`y'= wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
+		generate wage_noschl19`y'= wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
 }
 forvalues y=96(2)98 {
-	gen wage_noschl19`y'=wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
+	generate wage_noschl19`y'=wage19`y' if enrollmtrev`y'_19`y'!=2 & enrollmtrev`y'_19`y'!=3
 }
 forvalues y=0(2)6 {
-	gen wage_noschl200`y'=wage200`y' if enrollmtrev0`y'_200`y'!=2 & enrollmtrev0`y'_200`y'!=3
+	generate wage_noschl200`y'=wage200`y' if enrollmtrev0`y'_200`y'!=2 & enrollmtrev0`y'_200`y'!=3
 }
 
 ** Occupation: Apply occ1990dd crosswalk
@@ -177,7 +177,7 @@ forvalues y=0(2)6 {
 * Remove extra digit for occ codes beginning in 2004
 forvalues y=2004(2)2012 {
 	rename occall_emp_01_`y' occall_4d
-	gen occall_emp_01_`y'=substr(string(occall_4d), 1, length(string(occall_4d))-1)
+	generate occall_emp_01_`y'=substr(string(occall_4d), 1, length(string(occall_4d))-1)
 	destring occall_emp_01_`y', replace
 	drop occall_4d
 }
@@ -185,7 +185,7 @@ forvalues y=2004(2)2012 {
 * Years 1979-1981: occ70
 forvalues y=1979(1)1981 {
 	rename cpsocc70_`y' occ70
-	merge m:1 occ70 using "`occdir'/occ1970_occ1990dd.dta", keep(master match) nogen
+	merge m:1 occ70 using "`occdir'/occ1970_occ1990dd.dta", keep(master match) nogenerate
 	display "Occupations not matched to occ1990dd: `y'"
 	levelsof occ70 if occ1990dd==.
 	rename occ70 occ`y'
@@ -196,7 +196,7 @@ forvalues y=1979(1)1981 {
 forvalues y=1982(1)1994 {
 	rename cpsocc80_`y' occ
 	merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", ///
-		keep(master match) nogen
+		keep(master match) nogenerate
 	display "Occupations not matched to occ1990dd: `y'"
 	levelsof occ if occ1990dd==.
 	rename occ occ`y'
@@ -206,7 +206,7 @@ rename cpsocc80_01_2000 cpsocc80_2000
 forvalues y=1996(2)2000 {
 	rename cpsocc80_`y' occ
 	merge m:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", ///
-		keep(master match) nogen
+		keep(master match) nogenerate
 	display "Occupations not matched to occ1990dd: `y'"
 	levelsof occ if occ1990dd==.
 	rename occ occ`y'
@@ -217,7 +217,7 @@ forvalues y=1996(2)2000 {
 forvalues y=2002(2)2012 {
 	rename occall_emp_01_`y' occ
 	merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", ///
-		keep(master match) nogen
+		keep(master match) nogenerate
 	display "Occupations not matched to occ1990dd: `y'"
 	levelsof occ if occ1990dd==.
 	rename occ occ`y'
@@ -229,7 +229,7 @@ forvalues y=2002(2)2012 {
 * Years 1979-1981: ind70
 forvalues y=1979(1)1981 {
 	rename cpsind70_`y' ind70
-	merge m:1 ind70 using "`inddir'/ind70.dta", keep(master match) nogen ///
+	merge m:1 ind70 using "`inddir'/ind70.dta", keep(master match) nogenerate ///
 		keepusing(ind70 ind6090)
 	display "Industries not matched to ind6090: `y'"
 	levelsof ind70 if ind6090==.
@@ -240,7 +240,7 @@ forvalues y=1979(1)1981 {
 * Years 1982-2000: ind80
 forvalues y=1982(1)1994 {
 	rename cpsind80_`y' ind80
-	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogen ///
+	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogenerate ///
 		keepusing(ind80 ind6090)
 	display "Industries not matched to ind6090: `y'"
 	levelsof ind80 if ind6090==.
@@ -250,7 +250,7 @@ forvalues y=1982(1)1994 {
 rename cpsind80_01_2000 cpsind80_2000
 forvalues y=1996(2)2000 {
 	rename cpsind80_`y' ind80
-	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogen ///
+	merge m:1 ind80 using "`inddir'/ind80.dta", keep(master match) nogenerate ///
 		keepusing(ind80 ind6090)
 	display "Industries not matched to ind6090: `y'"
 	levelsof ind80 if ind6090==.
@@ -264,7 +264,7 @@ forvalues y=2002(2)2012 {
 	if `y'==2004 | `y'==2006 | `y'==2008 | `y'==2010 | `y'==2012 {
 		replace ind00=floor(ind00/10)
 	}
-	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogen
+	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
 	display "Industries not matched to ind6090: `y'"
 	levelsof ind00 if ind6090==.
 	rename ind00 ind`y'
@@ -274,43 +274,43 @@ forvalues y=2002(2)2012 {
 ** Social skills composite
 
 * School activity participation
-gen youth_org=school_46_000001_1984
-gen hobby=school_46_000002_1984
-gen stugov=school_46_000003_1984
-gen newsp=school_46_000004_1984
-gen athletics=school_46_000005_1984
-gen perfarts=school_46_000006_1984
+generate youth_org=school_46_000001_1984
+generate hobby=school_46_000002_1984
+generate stugov=school_46_000003_1984
+generate newsp=school_46_000004_1984
+generate athletics=school_46_000005_1984
+generate perfarts=school_46_000006_1984
 
 * Sociability
-gen social_age6=health_soc_1_1985
-gen social_adult=health_soc_2_1985
+generate social_age6=health_soc_1_1985
+generate social_adult=health_soc_2_1985
 
 * Number of clubs, including zero
 foreach x in youth_org hobby stugov newsp athletics perfarts {
-	gen `x'_cat=(`x'!=.)
+	generate `x'_cat=(`x'!=.)
 }
-egen num_clubs=rowtotal(youth_org_cat hobby_cat stugov_cat newsp_cat athletics_cat perfarts_cat)
+egenerate num_clubs=rowtotal(youth_org_cat hobby_cat stugov_cat newsp_cat athletics_cat perfarts_cat)
 replace num_clubs=. if athletics_cat==.
 
 * Standardize
 foreach var of varlist social_age6 social_adult num_clubs athletics_cat {
-	egen `var'_std=std(`var'), mean(0) std(1)
+	egenerate `var'_std=std(`var'), mean(0) std(1)
 }
 
 * Composite 1: 4 elements (use in NLSY79-only analyses)
-egen soc_nlsy=rowmean(social_age6_std social_adult_std athletics_cat_std num_clubs_std)
-egen soc_nlsy_std=std(soc_nlsy), mean(0) std(1)
+egenerate soc_nlsy=rowmean(social_age6_std social_adult_std athletics_cat_std num_clubs_std)
+egenerate soc_nlsy_std=std(soc_nlsy), mean(0) std(1)
 
 * Composite 2: 2 elements (use in analyses with NLSY79 & NLSY97)
-egen soc_nlsy2=rowmean(social_age6_std social_adult_std)
-egen soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+egenerate soc_nlsy2=rowmean(social_age6_std social_adult_std)
+egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
 
 ** Non-Cognitive measures: Rotter & Rosenberg score
-egen rotter_std=std(rotter_score_1979), mean(0) std(1)
+egenerate rotter_std=std(rotter_score_1979), mean(0) std(1)
 replace rotter_std=-rotter_std
-egen rosen_std=std(rosenberg_score_1980), mean(0) std(1)
-egen noncog=rowmean(rotter_std rosen_std)
-egen noncog_std=std(noncog), mean(0) std(1)
+egenerate rosen_std=std(rosenberg_score_1980), mean(0) std(1)
+egenerate noncog=rowmean(rotter_std rosen_std)
+egenerate noncog_std=std(noncog), mean(0) std(1)
 
 ** Restrict sample to selected variables and compress
 keep caseid race sex age* urban1979-urban2012 div* metro* educ emp* wage* occ* ///
@@ -343,67 +343,67 @@ rename pubid_1997 pubid
 ** Demographics - recode to make them similar to NLSY79
 
 ** Demographics
-gen race=1 if key_race_ethnicity_1997==2 /*Hispanic*/
+generate race=1 if key_race_ethnicity_1997==2 /*Hispanic*/
 * Code mixed as Black, following NLSY79
 replace race=2 if key_race_ethnicity_1997==1 | key_race_ethnicity_1997==3 /*Black*/
 replace race=3 if key_race_ethnicity_1997==4 /*White Non-Hispanic*/
-gen sex=key_sex_1997
-gen age1997=1997-key_bdate_y_1997
+generate sex=key_sex_1997
+generate age1997=1997-key_bdate_y_1997
 
 * Age by year
 forvalues y=1998(1)2011 {
 	local z=`y'-1997
-	gen age`y'=age1997+`z'
+	generate age`y'=age1997+`z'
 }
-gen age2013=age1997+16
+generate age2013=age1997+16
 
-** Urbanicity and region
+** Urbanicity and regression
 forvalues y=1997(1)2011 {
-	gen urban`y'=cv_urban_rural_`y'
-	gen div`y'=cv_census_region_`y'
-	gen metro`y'=cv_msa_`y'
+	generate urban`y'=cv_urban_rural_`y'
+	generate div`y'=cv_census_regression_`y'
+	generate metro`y'=cv_msa_`y'
 }
-gen urban2013=cv_urban_rural_2013
-gen div2013=cv_census_region_2013
-gen metro2013=cv_msa_2013
+generate urban2013=cv_urban_rural_2013
+generate div2013=cv_census_regression_2013
+generate metro2013=cv_msa_2013
 
 ** Highest grade completed
-gen educ=cvc_hgc_ever_xrnd
+generate educ=cvc_hgc_ever_xrnd
 replace educ=. if educ==95
 
 ** Employment since date of last interview (DLI)
 forvalues y=1997(1)2011 {
-	gen emp`y'=1 if yinc_1400_`y'==1
+	generate emp`y'=1 if yinc_1400_`y'==1
 	replace emp`y'=0 if yinc_1400_`y'==0
 }
-gen emp2013=1 if yinc_1400_2013==1
+generate emp2013=1 if yinc_1400_2013==1
 replace emp2013=0 if yinc_1400_2013==0
 
 ** Hourly rate of pay
 forvalues y=1997(1)2011 {
-	gen wage`y'=cv_hrly_pay_01_`y'/100
+	generate wage`y'=cv_hrly_pay_01_`y'/100
 }
-gen wage2013=cv_hrly_pay_01_2013/100
+generate wage2013=cv_hrly_pay_01_2013/100
 
 * Hourly wage excluding those enrolled in school
-gen school1997=cv_enrollstat_1997>=8 & cv_enrollstat_1997!=.
+generate school1997=cv_enrollstat_1997>=8 & cv_enrollstat_1997!=.
 forvalues y=1998(1)2004 {
-	gen school`y'=cv_enrollstat_edt_`y'>=8 & cv_enrollstat_edt_`y'!=.
+	generate school`y'=cv_enrollstat_edt_`y'>=8 & cv_enrollstat_edt_`y'!=.
 }
 forvalues y=2005(1)2011 {
-		gen school`y'=cv_enrollstat_`y'>=8 & cv_enrollstat_`y'!=.
+		generate school`y'=cv_enrollstat_`y'>=8 & cv_enrollstat_`y'!=.
 }
-gen school2013=cv_enrollstat_2013>=8 & cv_enrollstat_2013!=.
+generate school2013=cv_enrollstat_2013>=8 & cv_enrollstat_2013!=.
 forvalues y=1997(1)2011 {
-	gen wage_noschl`y'=wage`y' if school`y'==0
+	generate wage_noschl`y'=wage`y' if school`y'==0
 }
-gen wage_noschl2013=wage2013 if school2013==0
+generate wage_noschl2013=wage2013 if school2013==0
 
 ** Occupation: Apply occ1990dd crosswalk (using occ80)
 forvalues y=1997(1)2011 {
 	rename yemp_occode_2002_01_`y' occ
 	replace occ=occ/10
-	merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogen
+	merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogenerate
 	replace occ1990dd=653 if occ==650
 	replace occ1990dd=533 if occ==884
 	replace occ1990dd=439 if occ==416
@@ -423,7 +423,7 @@ forvalues y=1997(1)2011 {
 }
 rename yemp_occode_2002_01_2013 occ
 replace occ=occ/10
-merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogen
+merge m:1 occ using "`occdir'/occ2000_occ1990dd_update.dta", keep(master match) nogenerate
 	replace occ1990dd=653 if occ==650
 	replace occ1990dd=533 if occ==884
 	replace occ1990dd=439 if occ==416
@@ -447,7 +447,7 @@ forvalues y=1997(1)2011 {
 	replace ind00=floor(ind00/10)
 	replace ind00=49 if ind00==48
 	replace ind00=207 if ind00==200
-	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogen
+	merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
 	display "Industries not matched to ind6090: `y'"
 	levelsof ind00 if ind6090==.
 	rename ind00 ind`y'
@@ -457,7 +457,7 @@ rename yemp_indcode_2002_01_2013 ind00
 replace ind00=floor(ind00/10)
 replace ind00=49 if ind00==48
 replace ind00=207 if ind00==200
-merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogen
+merge m:1 ind00 using "`inddir'/ind00.dta", keep(master match) nogenerate
 display "Industries not matched to ind6090: 2013"
 levelsof ind00 if ind6090==.
 rename ind00 ind2013
@@ -480,23 +480,23 @@ rename ytel_tipia_000008_2008 careless
 
 * Social skills composite
 foreach x in extraverted reserved {
-	egen `x'_std=std(`x'), mean(0) std(1)
+	egenerate `x'_std=std(`x'), mean(0) std(1)
 }
-gen animated_std=-reserved_std
+generate animated_std=-reserved_std
 
-egen soc_nlsy2=rowmean(extraverted_std animated_std)
-egen soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
+egenerate soc_nlsy2=rowmean(extraverted_std animated_std)
+egenerate soc_nlsy2_std=std(soc_nlsy2), mean(0) std(1)
 
 * Non-cognitive skills composite
 foreach x in disorganized conscientious undependable thorough trusting disciplined careless {
-	egen `x'_std=std(`x'), mean(0) std(1)
+	egenerate `x'_std=std(`x'), mean(0) std(1)
 }
-gen organized_std=-disorganized_std
-gen dependable_std=-undependable_std
-gen careful_std=-careless_std
+generate organized_std=-disorganized_std
+generate dependable_std=-undependable_std
+generate careful_std=-careless_std
 
-egen noncog=rowmean(organized_std conscientious_std dependable_std thorough_std trusting_std disciplined_std careful_std)
-egen noncog_std=std(noncog), mean(0) std(1)
+egenerate noncog=rowmean(organized_std conscientious_std dependable_std thorough_std trusting_std disciplined_std careful_std)
+egenerate noncog_std=std(noncog), mean(0) std(1)
 
 ** Restrict sample to selected variables
 keep pubid race sex age* urban* div* metro* educ emp* wage* occ* ///
@@ -516,32 +516,32 @@ save "`nlsydir'/nlsy97_clean.dta", replace
 	
 ** Append NLSY79 data and create sample indicators 
 *	Note: sample=1 if sample==nlsy97
-gen sample=1
+generate sample=1
 append using "`nlsydir'/nlsy79_clean.dta"
 replace sample=0 if sample!=1
 
 ** Person ID
 replace pubid=caseid if pubid==.
-egen uniqueID=group(pubid sample)
+egenerate uniqueID=group(pubid sample)
 
 ** ASVAB - Use Altonji, Bharadwaj and Lange (2009) file that gives age-adjusted 
 *	comparability across NLSY surveys*
-gen pid=pubid
+generate pid=pubid
 replace pid=caseid if pid==.
 rename age age_temp
 merge m:1 pid sample using "`afqtadj'/afqt_adjusted_final.dta", keep(master match) ///
-	keepusing(age weight pafqt afqt_std) nogen
+	keepusing(age weight pafqt afqt_std) nogenerate
 rename age age_test
 rename age_temp age
 rename afqt_std afqt
-egen afqt_std=std(afqt), mean(0) std(1)
+egenerate afqt_std=std(afqt), mean(0) std(1)
 drop pid
 
 ** Earnings adjustments
 
 * Logged earnings, excluding respondents enrolled in school
-gen ln_wage=ln(wage)
-gen ln_wage_noschl=ln(wage_noschl)
+generate ln_wage=ln(wage)
+generate ln_wage_noschl=ln(wage_noschl)
 replace ln_wage_noschl=ln_wage if year>=2008 & year<=2012 & sample==0
 drop ln_wage
 rename ln_wage_noschl ln_wage
@@ -585,7 +585,7 @@ replace wage=3 if wage>0 & wage<3
 replace wage=200 if wage>200 & wage!=.
 
 ** Merge in ONET measures
-merge m:1 occ1990dd using "`onetdir'/onet98_occ1990dd_pct.dta", keep(master match) nogen
+merge m:1 occ1990dd using "`onetdir'/onet98_occ1990dd_pct.dta", keep(master match) nogenerate
 levelsof occ1990dd if socskills_onet1998_pct==.
 
 * Rename ONET measures
@@ -596,57 +596,57 @@ foreach x in require_social number_facility math routine socskills service ///
 
 ** Interaction measure
 
-* Race-by-gender
-gen female=(sex==2)
-gen hisp_male=(race==1 & sex==1)
-gen hisp_female=(race==1 & sex==2)
-gen black_male=(race==2 & sex==1)
-gen black_female=(race==2 & sex==2)
+* Race-by-generateder
+generate female=(sex==2)
+generate hisp_male=(race==1 & sex==1)
+generate hisp_female=(race==1 & sex==2)
+generate black_male=(race==2 & sex==1)
+generate black_female=(race==2 & sex==2)
 
 * NLSY skills
-gen afqt_socnlsy=afqt_std*soc_nlsy_std
-gen afqt_socnlsy2=afqt_std*soc_nlsy2_std
-gen afqt_noncog=afqt_std*noncog_std
+generate afqt_socnlsy=afqt_std*soc_nlsy_std
+generate afqt_socnlsy2=afqt_std*soc_nlsy2_std
+generate afqt_noncog=afqt_std*noncog_std
 
 * NLSY skills and ONET tasks
-gen afqt_math=afqt_std*math
-gen socnlsy_math=soc_nlsy_std*math
-gen afqt_socnlsy_math=afqt_std*soc_nlsy_std*math
-gen socnlsy2_math=soc_nlsy2_std*math
-gen afqt_socnlsy2_math=afqt_std*soc_nlsy2_std*math
+generate afqt_math=afqt_std*math
+generate socnlsy_math=soc_nlsy_std*math
+generate afqt_socnlsy_math=afqt_std*soc_nlsy_std*math
+generate socnlsy2_math=soc_nlsy2_std*math
+generate afqt_socnlsy2_math=afqt_std*soc_nlsy2_std*math
 
-gen afqt_routine=afqt_std*routine
-gen socnlsy_routine=soc_nlsy_std*routine
-gen afqt_socnlsy_routine=afqt_std*soc_nlsy_std*routine
-gen socnlsy2_routine=soc_nlsy2_std*routine
-gen afqt_socnlsy2_routine=afqt_std*soc_nlsy2_std*routine
+generate afqt_routine=afqt_std*routine
+generate socnlsy_routine=soc_nlsy_std*routine
+generate afqt_socnlsy_routine=afqt_std*soc_nlsy_std*routine
+generate socnlsy2_routine=soc_nlsy2_std*routine
+generate afqt_socnlsy2_routine=afqt_std*soc_nlsy2_std*routine
 
-gen afqt_socskills=afqt_std*socskills
-gen socnlsy_socskills=soc_nlsy_std*socskills
-gen afqt_socnlsy_socskills=afqt_std*soc_nlsy_std*socskills
-gen socnlsy2_socskills=soc_nlsy2_std*socskills
-gen afqt_socnlsy2_socskills=afqt_std*soc_nlsy2_std*socskills
+generate afqt_socskills=afqt_std*socskills
+generate socnlsy_socskills=soc_nlsy_std*socskills
+generate afqt_socnlsy_socskills=afqt_std*soc_nlsy_std*socskills
+generate socnlsy2_socskills=soc_nlsy2_std*socskills
+generate afqt_socnlsy2_socskills=afqt_std*soc_nlsy2_std*socskills
 
 * Sample & NLSY skills
-gen afqt_sample=afqt_std*sample
-gen soc_nlsy2_sample=soc_nlsy2_std*sample
-gen afqt_socnlsy2_sample=afqt_socnlsy2*sample
-gen noncog_sample=noncog_std*sample
+generate afqt_sample=afqt_std*sample
+generate soc_nlsy2_sample=soc_nlsy2_std*sample
+generate afqt_socnlsy2_sample=afqt_socnlsy2*sample
+generate noncog_sample=noncog_std*sample
 
 * Samples, NLSY skills & ONET tasks
 foreach x in math routine socskills service {
-	gen afqt_`x'_sample=afqt_sample*`x'
-	gen socnlsy2_`x'_sample=soc_nlsy2_sample*`x'
-	gen afqt_socnlsy2_`x'_sample=afqt_socnlsy2_sample*`x'
+	generate afqt_`x'_sample=afqt_sample*`x'
+	generate socnlsy2_`x'_sample=soc_nlsy2_sample*`x'
+	generate afqt_socnlsy2_`x'_sample=afqt_socnlsy2_sample*`x'
 }
 foreach var of varlist require_social-interact {
-	gen `var'_sample=`var'*sample
+	generate `var'_sample=`var'*sample
 }
 
 ** Completeness indicators
-gen complete79=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
+generate complete79=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
 	afqt_std!=. & soc_nlsy_std!=.)
-gen complete97=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
+generate complete97=(emp==1 & ind6090!=. & div!=. & metro!=. & urban!=. & math!=. & ///
 	afqt_std!=. & soc_nlsy2_std!=.)
 
 ** Compress data
@@ -669,54 +669,54 @@ set more off
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg ln_wage soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 ///
+xi: regress ln_wage soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 ///
 	& age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
 
-xi: reg ln_wage afqt_std soc_nlsy_std `covs' [w=weight] if complete79==1 ///
+xi: regress ln_wage afqt_std soc_nlsy_std `covs' [w=weight] if complete79==1 ///
 	& sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std i.educ `covs' ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std i.educ `covs' ///
 	[w=weight] if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std afqt_noncog `covs' ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std afqt_noncog `covs' ///
 	[w=weight] if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std afqt_noncog i.educ ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std afqt_noncog i.educ ///
 	`covs' [w=weight] if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table1, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
 
 ****Table 2 - Occupational Sorting on Skills in the NLSY79****
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg routine afqt_std soc_nlsy_std afqt_socnlsy i.educ `covs' i.ind6090 ///
+xi: regress routine afqt_std soc_nlsy_std afqt_socnlsy i.educ `covs' i.ind6090 ///
 	[w=weight] if complete79==1 & sample==0 & age>=23 & wage!=., vce(cluster pubid)
-outreg2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
+outregress2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
 	
-xi: reg routine afqt_std soc_nlsy_std afqt_socnlsy math number_facility reason info_use ///
+xi: regress routine afqt_std soc_nlsy_std afqt_socnlsy math number_facility reason info_use ///
 	i.educ `covs' [w=weight] if complete79==1 & sample==0 & age>=23 & wage!=., vce(cluster pubid)
-outreg2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg socskills afqt_std soc_nlsy_std afqt_socnlsy i.educ `covs' i.ind6090 ///
+xi: regress socskills afqt_std soc_nlsy_std afqt_socnlsy i.educ `covs' i.ind6090 ///
 	[w=weight] if complete79==1 & sample==0 & age>=23 & wage!=., vce(cluster pubid)
-outreg2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 	
-xi: reg socskills afqt_std soc_nlsy_std afqt_socnlsy math number_facility reason info_use ///
+xi: regress socskills afqt_std soc_nlsy_std afqt_socnlsy math number_facility reason info_use ///
 	i.educ `covs' [w=weight] if complete79==1 & sample==0 & age>=23 & wage!=., vce(cluster pubid)
-outreg2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
 
 ****Table 3 - Returns to Skills by Occupation Task Intensity in the NLSY79****
@@ -724,53 +724,53 @@ outreg2 using table2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 xtset uniqueID
 local covs "i.age i.year i.div i.metro i.urban"
 
-xi: xtreg ln_wage routine afqt_routine socnlsy_routine afqt_socnlsy_routine ///
+xi: xtregress ln_wage routine afqt_routine socnlsy_routine afqt_socnlsy_routine ///
 	`covs' [w=weight] if complete79==1 & age>=23 & sample==0, fe vce(cluster uniqueID)
-outreg2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4) replace	
+outregress2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4) replace	
 
-xi: xtreg ln_wage socskills afqt_socskills socnlsy_socskills afqt_socnlsy_socskills ///
+xi: xtregress ln_wage socskills afqt_socskills socnlsy_socskills afqt_socnlsy_socskills ///
 	`covs' [w=weight] if complete79==1 & age>=23 & sample==0, fe vce(cluster uniqueID)
-outreg2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
+outregress2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
 
-xi: xtreg ln_wage routine afqt_routine socnlsy_routine afqt_socnlsy_routine ///
+xi: xtregress ln_wage routine afqt_routine socnlsy_routine afqt_socnlsy_routine ///
 	socskills afqt_socskills socnlsy_socskills afqt_socnlsy_socskills ///
 	`covs' [w=weight] if complete79==1 & age>=23 & sample==0, fe vce(cluster uniqueID)
-outreg2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
+outregress2 using table3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
 
 
 ****Table 4 - Labor Market Returns to Skills in the NLSY79 vs. the NLSY97****
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample sample `covs' if age>=25 & age<=33, ///
 	vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace
 
-xi: reg emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample sample i.educ `covs' if age>=25 & age<=33, ///
 	vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress emp afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample  noncog_std noncog_sample sample i.educ `covs' ///
 	if age>=25 & age<=33, vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample sample `covs' if age>=25 & age<=33 & complete97==1, ///
 	vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample sample i.educ `covs' if age>=25 & age<=33 & complete97==1, ///
 	vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
+xi: regress ln_wage afqt_std afqt_sample soc_nlsy2_std soc_nlsy2_sample afqt_socnlsy2 ///
 	afqt_socnlsy2_sample sample i.educ `covs' noncog_std noncog_sample ///
 	if age>=25 & age<=33 & complete97==1, vce(cluster pubid)
-outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
 
 ****Table 5 - Returns to Skills by Occupation Task Intensity in the NLSY79 vs. the NLSY97****
@@ -778,20 +778,20 @@ outreg2 using table4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 local covs "i.age i.year i.div i.metro i.urban"
 
 * Col 1
-xtreg ln_wage socskills socskills_sample `covs' ///
+xtregress ln_wage socskills socskills_sample `covs' ///
 	if age>=25 & age<=33 & complete97==1, fe vce(cluster uniqueID)
-outreg2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4) replace
+outregress2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4) replace
 
 * Col 2
-xtreg ln_wage socskills socskills_sample math math_sample `covs' ///
+xtregress ln_wage socskills socskills_sample math math_sample `covs' ///
 	if age>=25 & age<=33 & complete97==1, fe vce(cluster uniqueID)
-outreg2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
+outregress2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
 
 * Col 3
-xtreg ln_wage socskills socskills_sample math math_sample afqt_socskills ///
+xtregress ln_wage socskills socskills_sample math math_sample afqt_socskills ///
 	afqt_socskills_sample socnlsy2_socskills socnlsy2_socskills_sample	`covs' ///
 	if age>=25 & age<=33 & complete97==1, fe vce(cluster uniqueID)
-outreg2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
+outregress2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
 
 * Col 3 Coefficient Tests
 file open table5tests using "`tabdir'/table5tests.txt", write replace
@@ -805,11 +805,11 @@ local pval: di r(p)
 file write table5tests "Col 3, Test 2: `pval'" _n
 
 * Col 4
-xtreg ln_wage socskills socskills_sample math math_sample afqt_socskills ///
+xtregress ln_wage socskills socskills_sample math math_sample afqt_socskills ///
 	afqt_socskills_sample socnlsy2_socskills socnlsy2_socskills_sample ///
 	afqt_math afqt_math_sample socnlsy2_math socnlsy2_math_sample `covs' ///
 	if age>=25 & age<=33 & complete97==1, fe vce(cluster uniqueID)
-outreg2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
+outregress2 using table5, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(4)
 
 * Col 4 Coefficient Tests
 test (socnlsy2_socskills+socnlsy2_socskills_sample=0)
@@ -832,81 +832,81 @@ file close table5tests
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg wage soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 & age>=23, ///
+xi: regress wage soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 & age>=23, ///
 	vce(cluster pubid)
-outreg2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3) replace	
+outregress2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3) replace	
 
-xi: reg wage afqt_std soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 ///
+xi: regress wage afqt_std soc_nlsy_std `covs' [w=weight] if complete79==1 & sample==0 ///
 	& age>=23, vce(cluster pubid)
-outreg2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2)
+outregress2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy `covs' [w=weight] if complete79==1 ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy `covs' [w=weight] if complete79==1 ///
 	& sample==0 & age>=23, vce(cluster pubid)
-outreg2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ////
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ////
 	if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std i.educ `covs' [w=weight] ////
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std i.educ `covs' [w=weight] ////
 	if complete79==1 & sample==0 & age>=23, vce(cluster pubid)
-outreg2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA2, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
 
-****Table A3 - Heterogeneity in Returns to Skills (NLSY79)****
+****Table A3 - Heterogenerateeity in Returns to Skills (NLSY79)****
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & female==0, vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3) replace	
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & female==1, vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & (race==1 | race==2), vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & race==3, vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & educ<=12, vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
-xi: reg ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress ln_wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & educ>12, vce(cluster pubid)
-outreg2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
+outregress2 using tableA3, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(3)
 
 
-****Table A4 - Heterogeneity in Returns to Skills (NLSY79)****
+****Table A4 - Heterogenerateeity in Returns to Skills (NLSY79)****
 
 local covs "female hisp_male hisp_female black_male black_female i.age i.year i.div i.metro i.urban"
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & female==0, vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3) replace	
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3) replace	
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & female==1, vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & (race==1 | race==2), vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & race==3, vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & educ<=12, vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 
-xi: reg wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
+xi: regress wage afqt_std soc_nlsy_std afqt_socnlsy noncog_std `covs' [w=weight] ///
 	if complete79==1 & sample==0 & age>=23 & educ>12, vce(cluster pubid)
-outreg2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
+outregress2 using tableA4, alpha(0.01, 0.05, 0.10) bracket nocons excel dec(2) rdec(3)
 

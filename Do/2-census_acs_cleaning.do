@@ -59,21 +59,21 @@ local tabdir "${topdir}/Results/tables"
 use "`dotdir'/treiman.dta", clear
 
 * Create labor supply weights
-gen lswt = hours * weeks
+generate lswt = hours * weeks
 
 * Restrict to employed persons with observed occupation codes
 keep if lswt > 0
 drop if occ70 == . | occ80 == .
 
 * Merge in DOT 1977 measures with 1970 occupation codes
-merge m:1 occ70 using "`dotdir'/dot77-70.dta", keep(match) nogen
+merge m:1 occ70 using "`dotdir'/dot77-70.dta", keep(match) nogenerate
 
 * Collapse the DOT measures at the 1980 occupation level
 collapse ehf finger dcp sts math [aweight=lswt], by(occ80)
 
 * Merge in 1980 to 1990dd crosswalk
 rename occ80 occ
-merge 1:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", nogen
+merge 1:1 occ using "`occdir'/occ1980_occ1990dd_update.dta", nogenerate
 
 * Collapse by occ1990dd
 collapse ehf finger dcp sts math, by(occ1990dd)
@@ -109,7 +109,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 		foreach inv in "01_13" "14_26" "27_39" "40_47" "48_49" "50_52" {
 			local lb = substr("`inv'", 1, 2)
 			local ub = substr("`inv'", 4, .)
-			quietly sum wkswork1 if wkswork1 >= `lb' & wkswork1 <= `ub' [aweight = perwt]
+			quietly summarize wkswork1 if wkswork1 >= `lb' & wkswork1 <= `ub' [aweight = perwt]
 			local wks_`inv' = r(mean)
 		}
 	}
@@ -119,7 +119,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 
 	** Impute weeks and hours worked
 	if "`y'" == "2009" |  "`y'" == "2012" {
-		gen wkswork1 = 0
+		generate wkswork1 = 0
 		replace wkswork1 = `wks_01_13' if wkswork2 == 1
 		replace wkswork1 = `wks_14_26' if wkswork2 == 2
 		replace wkswork1 = `wks_27_39' if wkswork2 == 3
@@ -177,23 +177,23 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	assert educd >= 2 & educd <= 116
 
 	* Defining education using the educd variable		
-	gen edu_lths = (educd >= 002 & educd <= 050)
-	gen edu_hsch = (educd >= 060 & educd <= 064)
-	gen edu_scol = (educd >= 065 & educd <= 090)
-	gen edu_coll = (educd >= 100 & educd <= 116)
-	gen edu_bach = (educd >= 100 & educd <= 101)
-	gen edu_mast = (educd >= 110 & educd <= 116)
+	generate edu_lths = (educd >= 002 & educd <= 050)
+	generate edu_hsch = (educd >= 060 & educd <= 064)
+	generate edu_scol = (educd >= 065 & educd <= 090)
+	generate edu_coll = (educd >= 100 & educd <= 116)
+	generate edu_bach = (educd >= 100 & educd <= 101)
+	generate edu_mast = (educd >= 110 & educd <= 116)
 	
 	assert edu_lths + edu_hsch + edu_scol + edu_coll == 1
 	assert edu_bach + edu_mast == edu_coll
 	drop educ educd
 
 	** Compute each worker's labor supply weight
-	gen lswt = perwt * (uhrswork/35) * (wkswork1/50)
+	generate lswt = perwt * (uhrswork/35) * (wkswork1/50)
 	assert lswt > 0 & lswt < .
 	
 	** Compute log hourly wage
-	gen hrwage=incwage/(uhrswork*wkswork1)
+	generate hrwage=incwage/(uhrswork*wkswork1)
 	
 	* Inflate wages to 2012 dollars 
 	* 	Note: For annual average, go to https://data.bls.gov/cgi-bin/cpicalc.pl,
@@ -215,7 +215,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	}
 
 	* Log hourly wage
-	gen ln_hrwage=ln(hrwage)
+	generate ln_hrwage=ln(hrwage)
 	
 	** Data reduction
 	
@@ -224,7 +224,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	*		sex, education, industry, and occupation.
 	
 	* Restating education as a single variable
-	gen edu_bin = 1 if edu_lths == 1
+	generate edu_bin = 1 if edu_lths == 1
 	replace edu_bin = 2 if edu_hsch == 1
 	replace edu_bin = 3 if edu_scol == 1
 	replace edu_bin = 4 if edu_bach == 1
@@ -236,22 +236,22 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	label values edu_bin edulab
 	
 	* Collapse into narrowly defined cells
-	collapse (rawsum) lswt (mean) hrwage ln_hrwage [aw=lswt], by(year sex edu_bin occ occ1990 ind ind1990)
+	collapse (rawsummarize) lswt (mean) hrwage ln_hrwage [aw=lswt], by(year sex edu_bin occ occ1990 ind ind1990)
 
 	** Implement the Autor-Dorn occ1990dd occupation crosswalk.
 	
 	* Bring in occ1990dd codes
 	if "`y'" == "1980" | "`y'" == "1990" | "`y'" == "2000"   {
-		merge m:1 occ using "`occdir'/occ`y'_occ1990dd_update.dta", keep(master match) nogen
+		merge m:1 occ using "`occdir'/occ`y'_occ1990dd_update.dta", keep(master match) nogenerate
 	}
 	else if "`y'" == "2006" {
 		
 		* Remove extra zero for 2005-2009 occupation codes
 		rename occ occ4d
-		gen occ = substr(string(occ4d), 1, length(string(occ4d))-1)
+		generate occ = substr(string(occ4d), 1, length(string(occ4d))-1)
 		destring occ, replace
 	
-		merge m:1 occ using "`occdir'/occ2005_occ1990dd_update.dta", keep(master match) nogen
+		merge m:1 occ using "`occdir'/occ2005_occ1990dd_update.dta", keep(master match) nogenerate
 		drop occ
 		rename occ4d occ
 	}
@@ -259,22 +259,22 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 		rename occ occ_all
 		
 		* Occ 2005-2009 codes for 2008 & 2009
-		gen occ4d=occ_all if year==2008 | year==2009
-		gen occ = substr(string(occ4d), 1, length(string(occ4d))-1)
+		generate occ4d=occ_all if year==2008 | year==2009
+		generate occ = substr(string(occ4d), 1, length(string(occ4d))-1)
 		destring occ, replace
-		merge m:1 occ using "`occdir'/occ2005_occ1990dd_update.dta", keep(master match) nogen
+		merge m:1 occ using "`occdir'/occ2005_occ1990dd_update.dta", keep(master match) nogenerate
 		drop occ occ4d
 		
 		* Occ 2010 codes for 2010
-		gen occ2010=occ_all if year==2010
-		merge m:1 occ2010 using "`occdir'/occ2010_occ1990dd_update.dta", keep(1 3 4 5) update nogen
+		generate occ2010=occ_all if year==2010
+		merge m:1 occ2010 using "`occdir'/occ2010_occ1990dd_update.dta", keep(1 3 4 5) update nogenerate
 		drop occ2010
 		
 		rename occ_all occ
 	}
 	else if "`y'" == "2012" {
 		rename occ occ2010
-		merge m:1 occ2010 using "`occdir'/occ2010_occ1990dd_update.dta", keep(master match) nogen
+		merge m:1 occ2010 using "`occdir'/occ2010_occ1990dd_update.dta", keep(master match) nogenerate
 		rename occ2010 occ
 	}
 	
@@ -287,13 +287,13 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	** Merge ONET 1998 measures and DOT 1977 task measures at the occ1990dd level
 	
 	* Merge in ONET 1998
-	merge m:1 occ1990dd using "`onetdir'/onet98_occ1990dd.dta", keep(1 3) gen(onetmerge)
+	merge m:1 occ1990dd using "`onetdir'/onet98_occ1990dd.dta", keep(1 3) generate(onetmerge)
 	
 	* Merge in DOT 1977
-	merge m:1 occ1990dd using "`dotdir'/dot77-occ1990dd-Tr.dta", keep(1 3) gen(dotmerge)
+	merge m:1 occ1990dd using "`dotdir'/dot77-occ1990dd-Tr.dta", keep(1 3) generate(dotmerge)
 	
 	* Create overall task merge variable
-	gen taskmerge=(onetmerge==3 & dotmerge==3)
+	generate taskmerge=(onetmerge==3 & dotmerge==3)
 	
 	* Rename DOT tasks
 	foreach task in "ehf" "finger" "dcp" "sts" "math" {
@@ -301,7 +301,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	}
 	
 	* Create DOT 1977 composite routine variable
-	gen routine_dot77 = (finger_dot77 + sts_dot77)/2
+	generate routine_dot77 = (finger_dot77 + sts_dot77)/2
 
 	** Implement an industry crosswalk from AKK. 
 	
@@ -321,12 +321,12 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 		replace ind = 532 if ind == 522
 		
 		rename ind ind80
-	    merge m:1 ind80 using "`inddir'/ind80.dta", assert(2 3) keep(3) nogenerate keepusing(ind6090)
+	    merge m:1 ind80 using "`inddir'/ind80.dta", assert(2 3) keep(3) nogenerateerate keepusing(ind6090)
 	    rename ind80 ind
 	}
 	else if "`y'" == "1990" | "`y'" == "2000" | "`y'" == "2006" | "`y'" == "2009" | "`y'" == "2012" {
 		rename ind1990 ind90
-        merge m:1 ind90 using "`inddir'/ind90.dta", assert(2 3) keep(3) nogenerate keepusing(ind6090)
+        merge m:1 ind90 using "`inddir'/ind90.dta", assert(2 3) keep(3) nogenerateerate keepusing(ind6090)
     	rename ind90 ind1990
 	}
 	

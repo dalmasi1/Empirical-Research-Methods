@@ -170,7 +170,7 @@ rename	v8	I07IH00H
 rename	v9	I08IH00H
 rename	v10	I09IH00H
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Knowledge Variables
@@ -245,7 +245,7 @@ rename	v65	K32LV00M
 rename	v66	K33IM00M
 rename	v67	K33LV00M
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Skills Variables
@@ -346,7 +346,7 @@ rename	v91	C35LV00M
 rename	v92	C36IM00M
 rename	v93	C36LV00M
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Work Activity Variables
@@ -481,7 +481,7 @@ rename	v125	G42FG00M
 rename	v126	G42IM00M
 rename	v127	G42LV00M
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Work Context Variables
@@ -549,7 +549,7 @@ rename	v58	W90IJ00M
 rename	v59	W98FN00M
 rename	v60	W99FN00M
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Work Value Variables
@@ -557,12 +557,12 @@ save "`onetdir'/onet1998.dta", replace
 import delimited "`txtdir'/WorkValue.txt", clear delimiter(comma)
 
 rename	v1	onet98code
-rename	v2	VAGEN01M
-rename	v3	VAGEN02M
-rename	v4	VAGEN03M
-rename	v5	VAGEN04M
-rename	v6	VAGEN05M
-rename	v7	VAGEN06M
+rename	v2	VAgenerate01M
+rename	v3	VAgenerate02M
+rename	v4	VAgenerate03M
+rename	v5	VAgenerate04M
+rename	v6	VAgenerate05M
+rename	v7	VAgenerate06M
 rename	v8	V01EN00M
 rename	v9	V02EN00M
 rename	v10	V03EN00M
@@ -585,7 +585,7 @@ rename	v26	V19EN00M
 rename	v27	V20EN00M
 rename	v28	V21EN00M
 
-merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogen
+merge 1:1 onet98code using "`onetdir'/onet1998.dta", keep(match) nogenerate
 save "`onetdir'/onet1998.dta", replace
 
 ** Change variable numbers to lower case
@@ -604,9 +604,9 @@ foreach var in a12lv00m k14lv00m b05lv00m w85ij00m w80ao00m c01lv00m c02lv00m c0
 	c04lv00m g30lv00m c06lv00m w14cn00m w21ij00m a02lv00m a08lv00m a09lv00m a13lv00m ///
 	g01lv00m g02lv00m g08lv00m g09lv00m g34lv00m g35lv00m g26lv00m g27lv00m ///
 	g28lv00m g29lv00m {
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'-r(min)
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'/r(max)
 	replace `var'=`var'*10
 }
@@ -614,51 +614,51 @@ foreach var in a12lv00m k14lv00m b05lv00m w85ij00m w80ao00m c01lv00m c02lv00m c0
 ** Create composites
 	
 * Math
-egen math_onet1998=rowmean(a12lv00m k14lv00m b05lv00m)
+egenerate math_onet1998=rowmean(a12lv00m k14lv00m b05lv00m)
 drop a12lv00m k14lv00m b05lv00m
 
 * Routine
-egen routine_onet1998=rowmean(w80ao00m w85ij00m)
+egenerate routine_onet1998=rowmean(w80ao00m w85ij00m)
 drop w80ao00m w85ij00m
 
 * Social skills
-egen socskills_onet1998=rowmean(c01lv00m c02lv00m c03lv00m c04lv00m)
+egenerate socskills_onet1998=rowmean(c01lv00m c02lv00m c03lv00m c04lv00m)
 drop c01lv00m c02lv00m c03lv00m c04lv00m
 
 * Service
-egen service_onet1998=rowmean(g30lv00m c06lv00m)
+egenerate service_onet1998=rowmean(g30lv00m c06lv00m)
 drop g30lv00m c06lv00m
-gen customer_onet1998=w21ij00m
+generate customer_onet1998=w21ij00m
 
 * Require social interaction
 rename w14cn00m require_social_onet1998
 
 * Reason
-egen reason_onet1998=rowmean(a02lv00m a08lv00m a09lv00m)
+egenerate reason_onet1998=rowmean(a02lv00m a08lv00m a09lv00m)
 drop a02lv00m a08lv00m a09lv00m
 
 * Number facility
 rename a13lv00m number_facility_onet1998
 
 * Information use
-egen info_use_onet1998=rowmean(g01lv00m g02lv00m g08lv00m g09lv00m)
+egenerate info_use_onet1998=rowmean(g01lv00m g02lv00m g08lv00m g09lv00m)
 drop g01lv00m g02lv00m g08lv00m g09lv00m
 
 * Coordinate
-egen coord_onet1998=rowmean(g34lv00m g35lv00m)
+egenerate coord_onet1998=rowmean(g34lv00m g35lv00m)
 drop g34lv00m g35lv00m
 
 * Interact
-egen interact_onet1998=rowmean(g26lv00m g27lv00m g28lv00m g29lv00m)
+egenerate interact_onet1998=rowmean(g26lv00m g27lv00m g28lv00m g29lv00m)
 drop g26lv00m g27lv00m g28lv00m g29lv00m
 
 ** Rescale composites
 foreach var in require_social_onet1998 number_facility_onet1998 math_onet1998 ///
 	routine_onet1998 socskills_onet1998 service_onet1998 customer_onet1998 reason_onet1998 ///
 	info_use_onet1998 coord_onet1998 interact_onet1998 {
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'-r(min)
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'/r(max)
 	replace `var'=`var'*10
 }
@@ -681,23 +681,23 @@ save "`onetdir'/onet98_occ90_xwalk.dta", replace
 
 * Merge ONET 1998 and occ90 crosswalk
 use "`onetdir'/onet1998.dta", clear
-merge 1:m onet98code using "`onetdir'/onet98_occ90_xwalk.dta", keep(match) nogen
+merge 1:m onet98code using "`onetdir'/onet98_occ90_xwalk.dta", keep(match) nogenerate
 
 * Collapse by occ90
 collapse (mean) require_social_onet1998-interact_onet1998, by(occ90)
 
 * Merge in occ90 to occ1990dd crosswalk
 rename occ90 occ
-merge 1:1 occ using "`occdir'/occ1990_occ1990dd_update.dta", keep(match) nogen
+merge 1:1 occ using "`occdir'/occ1990_occ1990dd_update.dta", keep(match) nogenerate
 
 * Collapse by occ1990dd
 collapse (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
 
 * Re-scale again to 0-10
 foreach var of varlist require_social_onet1998-interact_onet1998 {
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'-r(min)
-	sum `var', meanonly
+	summarize `var', meanonly
 	replace `var'=`var'/r(max)
 	replace `var'=`var'*10
 }
