@@ -83,7 +83,7 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse ONET variables by occ1990dd
-collapse (rawsummarize) lswt (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
+collapse (rawsum) lswt (mean) require_social_onet1998-interact_onet1998, by(occ1990dd)
 
 * Turn ONET variables into percentiles weighted by 1980 labor supply
 foreach var of varlist require_social_onet1998-interact_onet1998 {

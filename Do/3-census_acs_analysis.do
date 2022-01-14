@@ -144,10 +144,10 @@ foreach y in 2000 2012 {
 	** Collapse and calculate occupation shares
 
 	* Collapse labor supply by consolidated occupations
-	collapse (rawsummarize) lswt, by(occ1990dd)
+	collapse (rawsum) lswt, by(occ1990dd)
 	
 	* Calculate labor supply in each occupation
-	egen t=summarize(lswt)
+	egen t=sum(lswt)
 	generate occ_share`y'=lswt/t
 	
 	* Save data
@@ -240,7 +240,7 @@ foreach year in 1980 1990 2000 2006 2009 2012 {
 	drop if taskmerge == 0
 
 	* Determine mean task content of each sex-education-industry cell
-	collapse (rawsummarize) lswt (mean) math_onet1998 socskills_onet1998 service_onet1998 ///
+	collapse (rawsum) lswt (mean) math_onet1998 socskills_onet1998 service_onet1998 ///
 		routine_onet1998 math_dot77 dcp_dot77 routine_dot77 [aweight=lswt], by(sex edu_bin ind6090)
 
 	** Overall centiles	
@@ -344,7 +344,7 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse to the mean of hourly wages, education & ONET variables, by 1990dd occupation
-collapse (rawsummarize) lswt (mean) math_onet1998 socskills_onet1998 [aw=lswt], by(occ1990dd)
+collapse (rawsum) lswt (mean) math_onet1998 socskills_onet1998 [aw=lswt], by(occ1990dd)
 
 * Calculate percentiles of ONET variables in 1980, weighted by labor supply
 foreach x in math socskills {
@@ -373,7 +373,7 @@ foreach y in 1980 1990 2000 2006 2009 2012 {
 	merge m:1 occ1990dd using "`collapdir'/taskcat1980.dta", nogenerate
 
 	* Collapse employment and wages by task category
-	collapse (rawsummarize) lswt (mean) hrwage [aw=lswt], by(taskcat)
+	collapse (rawsum) lswt (mean) hrwage [aw=lswt], by(taskcat)
 	
 	* Employment shares
 	egen totls=total(lswt)
@@ -451,7 +451,7 @@ graph export "`figdir'/fig5.pdf", replace
 foreach d in 1980 2012 {
 	use "`cleandir'/`d'.dta", clear
 	* Collapse labor supply by occupation
-	collapse (rawsummarize) lswt, by(occ1990dd)
+	collapse (rawsum) lswt, by(occ1990dd)
 	* Calculate share of labor supply in each occupation
 	egen t=total(lswt)
 	generate occ_share`d'=lswt/t
@@ -476,7 +476,7 @@ use "`cleandir'/1980.dta", clear
 drop if onetmerge==1
 
 * Collapse to the mean of hourly wages, education & ONET variables, by 1990dd occupation
-collapse (rawsummarize) lswt (mean) ln_hrwage math_onet1998 socskills_onet1998 ///
+collapse (rawsum) lswt (mean) ln_hrwage math_onet1998 socskills_onet1998 ///
 	coord_onet1998 interact_onet1998 [aw=lswt], by(occ1990dd)
 
 * Calculate percentiles of ONET variables in 1980, weighted by labor supply
@@ -585,7 +585,7 @@ use "`cleandir'/1980.dta", clear
 drop if taskmerge==0
 
 * Collapse by occ1990dd
-collapse (rawsummarize) lswt (mean) ln_hrwage math_dot77 dcp_dot77 sts_dot77 finger_dot77 ///
+collapse (rawsum) lswt (mean) ln_hrwage math_dot77 dcp_dot77 sts_dot77 finger_dot77 ///
 	ehf_dot77 require_social_onet1998-interact_onet1998 [aw=lswt], by(occ1990dd)
 
 * Turn ONET variables into percentiles
@@ -636,7 +636,7 @@ rename ind6090 ind
 replace year=2012 if year==2011 | year==2012 | year==2013
 
 * Collapse by year, generateder, education, occupation & industry
-collapse (mean) ln_hrwage require_social_onet-interact_onet (rawsummarize) lswt ///
+collapse (mean) ln_hrwage require_social_onet-interact_onet (rawsum) lswt ///
 	[aw=lswt], by(year sex edu_bin occ ind)
 
 * Reshape wide

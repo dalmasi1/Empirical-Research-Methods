@@ -236,7 +236,7 @@ foreach y in "1980" "1990" "2000" "2006" "2009" "2012" {
 	label values edu_bin edulab
 	
 	* Collapse into narrowly defined cells
-	collapse (rawsummarize) lswt (mean) hrwage ln_hrwage [aw=lswt], by(year sex edu_bin occ occ1990 ind ind1990)
+	collapse (rawsum) lswt (mean) hrwage ln_hrwage [aw=lswt], by(year sex edu_bin occ occ1990 ind ind1990)
 
 	** Implement the Autor-Dorn occ1990dd occupation crosswalk.
 	
