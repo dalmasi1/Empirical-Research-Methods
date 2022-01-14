@@ -19,6 +19,7 @@ The following changes were made to improve reproducibility:
 
 **Running the replication:**
 
-You can run the replication two ways.
+First, you need to copy the "Data" folder into the main folder. Then, you can do one of the following things:
+
 1. Run new_master.do directly in Stata.
 2. Run the Makefile.
